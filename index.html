@@ -839,16 +839,30 @@ function refreshWordListForMode() {
 }
 
 // ── GROUPS ──
+const SAT_PRESET_ID = 'sat-preset-1000';
+let SAT_PRESET_WORDS = [];
+
 let groups = JSON.parse(localStorage.getItem('sat-groups') || 'null');
 if (!groups) {
-  // migrate existing words into default group
   const existing = JSON.parse(localStorage.getItem('sat-words') || '[]');
   groups = [{ id: 'default', name: 'All Words', words: existing }];
   localStorage.setItem('sat-groups', JSON.stringify(groups));
 }
 let activeGroupId = localStorage.getItem('sat-active-group') || 'default';
-// ensure activeGroup exists
 if (!groups.find(g => g.id === activeGroupId)) activeGroupId = groups[0].id;
+
+// Load SAT preset from external file in the background
+fetch('sat-vocab.json')
+  .then(r => r.json())
+  .then(data => {
+    SAT_PRESET_WORDS = data;
+    if (!groups.find(g => g.id === SAT_PRESET_ID)) {
+      groups.push({ id: SAT_PRESET_ID, name: 'SAT 1000', words: data.map(w => ({...w})), preset: true });
+      localStorage.setItem('sat-groups', JSON.stringify(groups));
+    }
+    renderGroupsPage();
+  })
+  .catch(() => console.warn('sat-vocab.json not found — SAT preset unavailable'));
 
 function getActiveGroup() { return groups.find(g => g.id === activeGroupId) || groups[0]; }
 function saveGroups() { localStorage.setItem('sat-groups', JSON.stringify(groups)); localStorage.setItem('sat-active-group', activeGroupId); }
@@ -879,12 +893,15 @@ function renderGroupsPage() {
   groups.forEach(g => {
     const card = document.createElement('div');
     card.className = 'group-card' + (g.id === activeGroupId ? ' selected' : '');
+    const isPreset = g.id === SAT_PRESET_ID;
     card.innerHTML = `
-      <div class="group-card-name" id="gname-${g.id}">${g.name}</div>
+      <div style="display:flex;align-items:center;gap:7px;">
+        <div class="group-card-name" id="gname-${g.id}">${g.name}</div>
+        ${isPreset ? '<span style="font-size:0.6rem;background:var(--accent);color:#000;padding:2px 7px;border-radius:999px;font-family:IBM Plex Mono,monospace;letter-spacing:0.5px;">PRESET</span>' : ''}
+      </div>
       <div class="group-card-count">${g.words.length} word${g.words.length !== 1 ? 's' : ''}</div>
       <div class="group-card-actions">
-        <button class="group-action-btn" onclick="event.stopPropagation();renameGroup('${g.id}')">Rename</button>
-        <button class="group-action-btn danger" onclick="event.stopPropagation();deleteGroup('${g.id}')">Delete</button>
+        ${isPreset ? '<button class="group-action-btn" onclick="event.stopPropagation();resetPreset()">Reset</button>' : `<button class="group-action-btn" onclick="event.stopPropagation();renameGroup('${g.id}')">Rename</button><button class="group-action-btn danger" onclick="event.stopPropagation();deleteGroup('${g.id}')">Delete</button>`}
       </div>
     `;
     card.addEventListener('click', () => switchGroup(g.id));
@@ -915,10 +932,19 @@ function renameGroup(id) {
 }
 
 function deleteGroup(id) {
+  if (id === SAT_PRESET_ID) return; // can't delete preset
   if (!confirm('Delete this group and all its words?')) return;
   groups = groups.filter(g => g.id !== id);
   if (groups.length === 0) groups = [{ id: 'default', name: 'All Words', words: [] }];
   if (activeGroupId === id) { activeGroupId = groups[0].id; words = getActiveGroup().words; fcOrder = []; fcIdx = 0; showCard(); renderWordList(); }
+  saveGroups(); renderGroupsPage();
+}
+
+function resetPreset() {
+  if (!confirm('Reset SAT 1000 to the original 1,026 words? Any changes will be lost.')) return;
+  const g = groups.find(x => x.id === SAT_PRESET_ID);
+  if (g) { g.words = SAT_PRESET_WORDS.map(w => ({...w})); }
+  if (activeGroupId === SAT_PRESET_ID) { words = getActiveGroup().words; fcOrder = words.map((_,i)=>i); fcIdx=0; showCard(); renderWordList(); }
   saveGroups(); renderGroupsPage();
 }
 
