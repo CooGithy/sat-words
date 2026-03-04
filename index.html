@@ -917,17 +917,48 @@ function renderGroupsPage() {
   grid.appendChild(nc);
 }
 
+let _newGroupType = 'empty';
+
 function createGroup() {
-  const name = prompt('Group name:');
-  if (!name || !name.trim()) return;
-  const id = 'g_' + Date.now();
-  let startWords = [];
-  if (SAT_PRESET_WORDS.length > 0) {
-    const usePreset = confirm('Start with SAT 1000 preset words?\nOK = load preset  |  Cancel = start empty');
-    if (usePreset) startWords = SAT_PRESET_WORDS.map(w => ({...w}));
+  _newGroupType = 'empty';
+  // reset modal state
+  document.getElementById('new-group-name-input').value = '';
+  selectNewGroupType('empty');
+  document.getElementById('new-group-modal').classList.add('open');
+  setTimeout(() => document.getElementById('new-group-name-input').focus(), 80);
+}
+
+function selectNewGroupType(type) {
+  _newGroupType = type;
+  const presetBtn = document.getElementById('ngm-preset-btn');
+  const emptyBtn  = document.getElementById('ngm-empty-btn');
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  presetBtn.style.borderColor = type === 'preset' ? 'var(--accent)' : 'var(--border)';
+  presetBtn.style.background  = type === 'preset' ? 'var(--accent)22' : 'var(--surface)';
+  emptyBtn.style.borderColor  = type === 'empty'  ? 'var(--accent)' : 'var(--border)';
+  emptyBtn.style.background   = type === 'empty'  ? 'var(--accent)22' : 'var(--surface)';
+}
+
+function closeNewGroupModal() {
+  document.getElementById('new-group-modal').classList.remove('open');
+}
+
+function confirmNewGroup() {
+  const name = document.getElementById('new-group-name-input').value.trim();
+  if (!name) {
+    document.getElementById('new-group-name-input').focus();
+    document.getElementById('new-group-name-input').style.borderColor = '#e05';
+    return;
   }
-  groups.push({ id, name: name.trim(), words: startWords });
+  const id = 'g_' + Date.now();
+  const startWords = (_newGroupType === 'preset' && SAT_PRESET_WORDS.length > 0)
+    ? SAT_PRESET_WORDS.map(w => ({...w}))
+    : [];
+  groups.push({ id, name, words: startWords });
+  closeNewGroupModal();
   saveGroups(); renderGroupsPage();
+  // auto-switch into the new group
+  switchGroup(id);
 }
 
 function renameGroup(id) {
@@ -1552,5 +1583,57 @@ showHome();
 <style>
   #undo-toast.visible { opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
 </style>
+
+<div class="modal-overlay" id="new-group-modal">
+  <div class="modal" style="max-width:420px;text-align:left;">
+    <div class="modal-title" style="margin-bottom:6px;">New Group</div>
+    <div class="modal-msg" style="margin-bottom:20px;">Give your group a name, then choose how to start it.</div>
+
+    <input id="new-group-name-input" type="text" placeholder="Group name…" style="
+      width:100%; box-sizing:border-box;
+      background:var(--bg); border:1px solid var(--border); border-radius:10px;
+      padding:11px 14px; font-size:0.9rem; color:var(--text);
+      font-family:'IBM Plex Mono',monospace; outline:none; margin-bottom:18px;
+      transition:border-color 0.15s;
+    " oninput="this.style.borderColor='var(--accent)'" />
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;">
+      <button id="ngm-preset-btn" onclick="selectNewGroupType('preset')" style="
+        background:var(--surface); border:1.5px solid var(--border); border-radius:14px;
+        padding:18px 12px; cursor:pointer; text-align:center; transition:all 0.15s;
+        color:var(--text); font-family:inherit;
+      ">
+        <div style="font-size:1.4rem;margin-bottom:6px;">📚</div>
+        <div style="font-size:0.8rem;font-weight:600;font-family:'IBM Plex Mono',monospace;">SAT 1000</div>
+        <div style="font-size:0.68rem;color:var(--muted);margin-top:3px;">Load preset words</div>
+      </button>
+      <button id="ngm-empty-btn" onclick="selectNewGroupType('empty')" style="
+        background:var(--surface); border:1.5px solid var(--border); border-radius:14px;
+        padding:18px 12px; cursor:pointer; text-align:center; transition:all 0.15s;
+        color:var(--text); font-family:inherit;
+      ">
+        <div style="font-size:1.4rem;margin-bottom:6px;">✏️</div>
+        <div style="font-size:0.8rem;font-weight:600;font-family:'IBM Plex Mono',monospace;">Empty</div>
+        <div style="font-size:0.68rem;color:var(--muted);margin-top:3px;">Start from scratch</div>
+      </button>
+    </div>
+
+    <div class="modal-btns">
+      <button class="btn" onclick="confirmNewGroup()" style="background:var(--accent);color:#000;border-color:var(--accent);flex:1;">Create Group</button>
+      <button class="btn" onclick="closeNewGroupModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('new-group-modal').classList.contains('open')) {
+    confirmNewGroup();
+  }
+  if (e.key === 'Escape' && document.getElementById('new-group-modal').classList.contains('open')) {
+    closeNewGroupModal();
+  }
+});
+</script>
 </body>
 </html>
