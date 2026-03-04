@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAT Words</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --accent: #c8f060;
+    --bg: #0e0e0e;
+    --surface: #1a1a1a;
+    --border: #2e2e2e;
+    --text: #f0ede6;
+    --muted: #666;
+    --settings-bg: #1a1a1a;
+  }
+
+  body { background: var(--bg); color: var(--text); font-family: 'IBM Plex Mono', monospace; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 48px 20px; }
+
+  /* SETTINGS */
+  .settings-btn { position: fixed; top: 16px; right: 16px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); width: 36px; height: 36px; border-radius: 50%; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 200; transition: border-color 0.15s, color 0.15s; }
+  .settings-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .settings-panel { position: fixed; top: 60px; right: 16px; background: var(--settings-bg); border: 1px solid var(--border); border-radius: 16px; padding: 20px; width: 260px; z-index: 199; display: none; flex-direction: column; gap: 16px; box-shadow: 0 8px 40px rgba(0,0,0,0.5); max-height: 80vh; overflow-y: auto; }
+  .settings-panel.open { display: flex; }
+
+  .s-title { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; }
+
+  .color-zone { display: flex; flex-direction: column; gap: 8px; }
+  .zone-header { display: flex; align-items: center; gap: 10px; }
+  .zone-swatch { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--border); flex-shrink: 0; }
+  .zone-name { font-size: 0.78rem; color: var(--text); }
+
+  .hue-row { display: flex; align-items: center; gap: 8px; }
+  .hue-slider {
+    -webkit-appearance: none; appearance: none;
+    flex: 1; height: 10px; border-radius: 5px; outline: none; border: none; cursor: pointer;
+    background: linear-gradient(to right,
+      hsl(0,100%,50%), hsl(30,100%,50%), hsl(60,100%,50%), hsl(90,100%,50%),
+      hsl(120,100%,50%), hsl(150,100%,50%), hsl(180,100%,50%), hsl(210,100%,50%),
+      hsl(240,100%,50%), hsl(270,100%,50%), hsl(300,100%,50%), hsl(330,100%,50%), hsl(360,100%,50%));
+    padding: 0;
+  }
+  .hue-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #333; cursor: pointer; }
+  .brightness-slider {
+    -webkit-appearance: none; appearance: none;
+    flex: 1; height: 6px; border-radius: 3px; outline: none; border: none; cursor: pointer; padding: 0;
+  }
+  .brightness-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid #333; cursor: pointer; }
+  .hue-val { font-size: 0.65rem; color: var(--muted); min-width: 32px; text-align: right; font-family: 'IBM Plex Mono', monospace; }
+
+  .slider-label-sm { font-size: 0.62rem; color: var(--muted); min-width: 16px; }
+
+  .divider { border: none; border-top: 1px solid var(--border); }
+  .theme-btn-row { display: flex; gap: 8px; }
+  .theme-btn { flex: 1; background: none; border: 1px solid var(--border); color: var(--muted); padding: 8px 6px; border-radius: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; cursor: pointer; transition: all 0.15s; }
+  .theme-btn:hover { border-color: var(--accent); color: var(--accent); }
+  #theme-import-input { display: none; }
+
+  /* MAIN */
+  h1 { font-family: 'Playfair Display', serif; font-size: 1.6rem; letter-spacing: -0.5px; margin-bottom: 24px; }
+  h1 span { color: var(--accent); }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 36px; flex-wrap: wrap; justify-content: center; }
+  .tab { background: none; border: 1px solid var(--border); color: var(--muted); padding: 7px 18px; border-radius: 999px; font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; cursor: pointer; transition: all 0.15s; }
+  .tab.active, .tab:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+
+  /* CARD */
+  .card-wrap { perspective: 1000px; width: 100%; max-width: 520px; height: 300px; cursor: pointer; margin-bottom: 28px; }
+  .card { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.5s cubic-bezier(0.4,0,0.2,1); }
+  .card.flipped { transform: rotateY(180deg); }
+  .card-face { position: absolute; inset: 0; backface-visibility: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center; }
+  .card-back { transform: rotateY(180deg); }
+  .card-word { font-family: 'Playfair Display', serif; font-size: 2.6rem; color: var(--accent); margin-bottom: 10px; }
+  .card-hint { font-size: 0.72rem; color: var(--muted); }
+  .card-def { font-size: 1rem; line-height: 1.7; color: var(--text); }
+
+  .controls { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .btn { background: var(--surface); color: var(--text); border: 1px solid var(--border); padding: 10px 22px; border-radius: 999px; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; cursor: pointer; transition: all 0.15s; }
+  .btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+  .btn-danger { border-color: #ff5555; color: #ff5555; }
+  .btn-danger:hover { background: #ff5555; color: #fff; border-color: #ff5555; }
+
+  .counter { font-size: 0.75rem; color: var(--muted); min-width: 60px; text-align: center; }
+  .shuffle-btn { background: none; border: none; color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; cursor: pointer; transition: color 0.15s; margin-bottom: 40px; }
+  .shuffle-btn:hover { color: var(--text); }
+
+  /* QUIZ */
+  #quiz-view { display: none; width: 100%; max-width: 520px; }
+
+  .quiz-setup { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 36px; text-align: center; margin-bottom: 28px; }
+  .quiz-setup-title { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--accent); margin-bottom: 12px; }
+  .quiz-setup p { font-size: 0.8rem; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+  .quiz-mode-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+  .mode-btn { background: none; border: 1px solid var(--border); color: var(--muted); padding: 8px 18px; border-radius: 999px; font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; cursor: pointer; transition: all 0.15s; }
+  .mode-btn.active, .mode-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+  .quiz-limit-row { display: flex; gap: 10px; justify-content: center; align-items: center; margin-bottom: 0; }
+  .quiz-limit-row input { width: 80px; text-align: center; }
+
+  #quiz-active { display: none; }
+  .quiz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .quiz-progress { font-size: 0.75rem; color: var(--muted); }
+  .quiz-word { font-family: 'Playfair Display', serif; font-size: 2.2rem; color: var(--accent); text-align: center; margin-bottom: 32px; }
+  .options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+  .option { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 14px 20px; border-radius: 14px; font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; text-align: left; cursor: pointer; transition: all 0.15s; line-height: 1.5; }
+  .option:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .option.correct { background: #1a2e0a; border-color: #7ecb20; color: #7ecb20; }
+  .option.wrong { background: #2e0a0a; border-color: #ff5555; color: #ff5555; }
+  .option:disabled { cursor: default; }
+  .quiz-feedback { text-align: center; font-size: 0.8rem; margin-bottom: 16px; min-height: 20px; color: var(--muted); }
+  .quiz-controls { display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .live-score { font-size: 0.75rem; color: var(--muted); text-align: center; margin-bottom: 8px; }
+
+  /* RESULTS */
+  #quiz-results { display: none; }
+  .results-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 32px; margin-bottom: 20px; text-align: center; }
+  .results-pct { font-family: 'Playfair Display', serif; font-size: 3.5rem; color: var(--accent); line-height: 1; }
+  .results-sub { font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
+  .results-lists { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .result-group { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+  .result-group-title { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+  .result-group.right .result-group-title { color: #7ecb20; }
+  .result-group.wrong .result-group-title { color: #ff5555; }
+  .result-word { font-size: 0.78rem; color: var(--text); padding: 4px 0; border-bottom: 1px solid var(--border); line-height: 1.4; }
+  .result-word:last-child { border-bottom: none; }
+  .results-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+  /* FOCUS */
+  #focus-view { display: none; width: 100%; max-width: 520px; }
+  .focus-setup { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 40px; text-align: center; margin-bottom: 28px; }
+  .focus-setup p { font-size: 0.8rem; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+  .focus-input-row { display: flex; gap: 10px; justify-content: center; align-items: center; }
+  .focus-input-row input { width: 80px; text-align: center; flex: none; border-radius: 12px; }
+  .focus-label { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--accent); margin-bottom: 16px; }
+
+  /* ADD */
+  .add-section { width: 100%; max-width: 520px; border-top: 1px solid var(--border); padding-top: 28px; display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .add-row { display: flex; gap: 8px; }
+  input[type=text], input[type=number] { flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 10px 16px; border-radius: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; outline: none; transition: border-color 0.15s; }
+  input[type=text]:focus, input[type=number]:focus { border-color: var(--accent); }
+  input[type=text]::placeholder, input[type=number]::placeholder { color: var(--muted); }
+  .add-btn { background: var(--accent); color: #000; border: none; padding: 10px 20px; border-radius: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: opacity 0.15s; white-space: nowrap; }
+  .add-btn:hover { opacity: 0.85; }
+  .json-row { display: flex; gap: 8px; }
+  .json-btn { flex: 1; background: none; border: 1px solid var(--border); color: var(--muted); padding: 8px; border-radius: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; cursor: pointer; transition: all 0.15s; }
+  .json-btn:hover { border-color: var(--text); color: var(--text); }
+  #import-input { display: none; }
+
+  .wrong-prompt { background: var(--surface); border: 1px solid #ff5555; border-radius: 14px; padding: 16px 20px; font-size: 0.8rem; color: var(--text); line-height: 1.6; text-align: center; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<button class="settings-btn" onclick="toggleSettings()">⚙</button>
+
+<div class="settings-panel" id="settings-panel">
+  <div class="s-title">Theme Colors</div>
+  <div id="color-zones"></div>
+  <hr class="divider">
+  <div class="theme-btn-row">
+    <button class="theme-btn" onclick="downloadTheme()">↓ Save Theme</button>
+    <button class="theme-btn" onclick="document.getElementById('theme-import-input').click()">↑ Load Theme</button>
+    <input type="file" id="theme-import-input" accept=".json" onchange="loadTheme(event)">
+  </div>
+  <button class="theme-btn" onclick="resetTheme()">↺ Reset</button>
+</div>
+
+<h1>SAT <span>Words</span></h1>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchMode('flash')">Flashcards</button>
+  <button class="tab" onclick="switchMode('quiz')">Quiz</button>
+  <button class="tab" onclick="switchMode('focus')">Focused Study</button>
+</div>
+
+<!-- FLASHCARD -->
+<div id="flash-view" style="width:100%;max-width:520px;display:flex;flex-direction:column;align-items:center;">
+  <div class="card-wrap" onclick="flipCard()">
+    <div class="card" id="card">
+      <div class="card-face card-front"><div class="card-word" id="fc-word">—</div><div class="card-hint">click to reveal</div></div>
+      <div class="card-face card-back"><div class="card-def" id="fc-def">—</div></div>
+    </div>
+  </div>
+  <div class="controls">
+    <button class="btn" onclick="prevCard()">← Prev</button>
+    <span class="counter" id="fc-counter">0 / 0</span>
+    <button class="btn" onclick="nextCard()">Next →</button>
+  </div>
+  <button class="shuffle-btn" onclick="shuffleFlash()">⇄ shuffle</button>
+</div>
+
+<!-- QUIZ -->
+<div id="quiz-view">
+  <!-- Setup -->
+  <div id="quiz-setup" class="quiz-setup">
+    <div class="quiz-setup-title">Quiz</div>
+    <p>Choose infinite mode or set a word limit.</p>
+    <div class="quiz-mode-row">
+      <button class="mode-btn active" id="mode-infinite" onclick="selectQuizMode('infinite')">∞ Infinite</button>
+      <button class="mode-btn" id="mode-limited" onclick="selectQuizMode('limited')"># Limited</button>
+    </div>
+    <div id="limit-input-row" class="quiz-limit-row" style="display:none; margin-bottom:16px;">
+      <input type="number" id="quiz-limit" min="1" placeholder="e.g. 10" style="margin-bottom:0;" />
+      <span style="font-size:0.75rem;color:var(--muted);">words</span>
+    </div>
+    <div style="margin-top:16px;">
+      <button class="btn" onclick="startQuiz()">Start →</button>
+    </div>
+  </div>
+
+  <!-- Active -->
+  <div id="quiz-active">
+    <div class="quiz-header">
+      <span class="quiz-progress" id="q-progress"></span>
+      <button class="btn btn-danger" onclick="endQuiz()" style="padding:6px 14px;font-size:0.72rem;">Stop</button>
+    </div>
+    <div class="quiz-word" id="q-word">—</div>
+    <div class="options" id="q-options"></div>
+    <div class="quiz-feedback" id="q-feedback"></div>
+    <div class="quiz-controls">
+      <span class="live-score" id="q-live-score"></span>
+      <button class="btn" id="q-next" onclick="nextQuestion()" style="display:none;">Next →</button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="quiz-results">
+    <div class="results-card">
+      <div class="results-pct" id="r-pct">—</div>
+      <div class="results-sub" id="r-sub">—</div>
+    </div>
+    <div class="results-lists" id="r-lists"></div>
+    <div id="wrong-prompt" class="wrong-prompt" style="display:none;">
+      You got some wrong. Want to study those words in Focused Study?
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
+        <button class="btn" onclick="studyWrong()">Yes, study them →</button>
+        <button class="btn" onclick="showQuizSetup()">No thanks</button>
+      </div>
+    </div>
+    <div class="results-actions">
+      <button class="btn" onclick="showQuizSetup()">↺ New Quiz</button>
+    </div>
+  </div>
+</div>
+
+<!-- FOCUSED STUDY -->
+<div id="focus-view">
+  <div id="focus-setup" class="focus-setup">
+    <div class="focus-label">Focused Study</div>
+    <p id="focus-setup-msg">Pick a number of words to study.<br>A random set will be pulled from your list.</p>
+    <div class="focus-input-row" id="focus-input-row">
+      <input id="focus-count" type="number" min="2" placeholder="10" />
+      <button class="btn" onclick="startFocus()">Start →</button>
+    </div>
+  </div>
+  <div id="focus-card-wrap" style="display:none;width:100%;flex-direction:column;align-items:center;">
+    <div class="card-wrap" onclick="flipFocusCard()">
+      <div class="card" id="focus-card">
+        <div class="card-face card-front"><div class="card-word" id="foc-word">—</div><div class="card-hint">click to reveal</div></div>
+        <div class="card-face card-back"><div class="card-def" id="foc-def">—</div></div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn" onclick="prevFocus()">← Prev</button>
+      <span class="counter" id="foc-counter">0 / 0</span>
+      <button class="btn" onclick="nextFocus()">Next →</button>
+    </div>
+    <button class="shuffle-btn" onclick="resetFocusSetup()">↺ new set</button>
+    <button id="focus-dl-btn" class="json-btn" style="display:none;margin-top:4px;max-width:200px;" onclick="downloadFocusJSON()">↓ Download these words as JSON</button>
+  </div>
+</div>
+
+<!-- ADD -->
+<div class="add-section">
+  <div class="add-row">
+    <input type="text" id="word-input" placeholder="Word" />
+    <input type="text" id="def-input" placeholder="Definition" />
+    <button class="add-btn" onclick="addWord()">+ Add</button>
+  </div>
+  <div class="json-row">
+    <button class="json-btn" onclick="document.getElementById('import-input').click()">↑ Import JSON</button>
+    <input type="file" id="import-input" accept=".json" onchange="importJSON(event)">
+    <button class="json-btn" onclick="downloadJSON()">↓ Download JSON</button>
+  </div>
+</div>
+
+<script>
+// ── THEME ──
+const zoneConfig = [
+  { key: 'accent',  cssVar: '--accent',  label: 'Accent / Buttons', defaultHex: '#c8f060' },
+  { key: 'bg',      cssVar: '--bg',      label: 'Background',       defaultHex: '#0e0e0e' },
+  { key: 'surface', cssVar: '--surface', label: 'Card Surface',     defaultHex: '#1a1a1a' },
+  { key: 'text',    cssVar: '--text',    label: 'Text',             defaultHex: '#f0ede6' },
+];
+
+function hexToHsl(hex) {
+  let r = parseInt(hex.slice(1,3),16)/255, g = parseInt(hex.slice(3,5),16)/255, b = parseInt(hex.slice(5,7),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h, s, l = (max+min)/2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+    switch(max) {
+      case r: h = ((g-b)/d + (g<b?6:0))/6; break;
+      case g: h = ((b-r)/d + 2)/6; break;
+      case b: h = ((r-g)/d + 4)/6; break;
+    }
+  }
+  return { h: Math.round(h*360), s: Math.round(s*100), l: Math.round(l*100) };
+}
+
+function hslToHex(h, s, l) {
+  s /= 100; l /= 100;
+  const a = s * Math.min(l, 1-l);
+  const f = n => { const k = (n+h/30)%12; const c = l - a*Math.max(Math.min(k-3,9-k,1),-1); return Math.round(255*c).toString(16).padStart(2,'0'); };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+function buildDefaultTheme() {
+  const t = {};
+  zoneConfig.forEach(z => { t[z.key] = hexToHsl(z.defaultHex); });
+  return t;
+}
+
+let theme = JSON.parse(localStorage.getItem('sat-theme2') || 'null') || buildDefaultTheme();
+
+function applyTheme() {
+  zoneConfig.forEach(z => {
+    const { h, s, l } = theme[z.key];
+    const hex = hslToHex(h, s, l);
+    document.documentElement.style.setProperty(z.cssVar, hex);
+    const sw = document.getElementById('sw-'+z.key);
+    if (sw) sw.style.background = hex;
+    const hs = document.getElementById('hs-'+z.key);
+    if (hs) hs.value = h;
+    const ls = document.getElementById('ls-'+z.key);
+    if (ls) {
+      ls.value = l;
+      ls.style.background = `linear-gradient(to right, hsl(${h},${s}%,0%), hsl(${h},${s}%,50%), hsl(${h},${s}%,100%))`;
+    }
+    const hv = document.getElementById('hv-'+z.key);
+    if (hv) hv.textContent = hex;
+
+    if (z.key === 'surface') {
+      const bh = h, bs = s, bl = Math.min(100, l + 10);
+      document.documentElement.style.setProperty('--border', hslToHex(bh,bs,bl));
+      document.documentElement.style.setProperty('--settings-bg', hex);
+    }
+    if (z.key === 'text') {
+      document.documentElement.style.setProperty('--muted', hslToHex(h, Math.max(0,s-20), Math.round(l*0.45)));
+    }
+  });
+  localStorage.setItem('sat-theme2', JSON.stringify(theme));
+}
+
+function buildColorZones() {
+  const container = document.getElementById('color-zones');
+  zoneConfig.forEach(z => {
+    const { h, s, l } = theme[z.key];
+    const hex = hslToHex(h, s, l);
+    const div = document.createElement('div');
+    div.className = 'color-zone';
+    div.style.marginBottom = '12px';
+    div.innerHTML = `
+      <div class="zone-header">
+        <div class="zone-swatch" id="sw-${z.key}" style="background:${hex}"></div>
+        <span class="zone-name">${z.label}</span>
+      </div>
+      <div class="hue-row" style="margin-top:6px;">
+        <span class="slider-label-sm" style="color:var(--muted);font-size:0.6rem;">HUE</span>
+        <input type="range" class="hue-slider" min="0" max="360" value="${h}" id="hs-${z.key}"
+          oninput="updateZone('${z.key}','h',this.value)">
+        <span class="hue-val" id="hv-${z.key}">${hex}</span>
+      </div>
+      <div class="hue-row" style="margin-top:4px;">
+        <span class="slider-label-sm" style="color:var(--muted);font-size:0.6rem;">LIT</span>
+        <input type="range" class="brightness-slider" min="0" max="100" value="${l}" id="ls-${z.key}"
+          style="background:linear-gradient(to right, hsl(${h},${s}%,0%), hsl(${h},${s}%,50%), hsl(${h},${s}%,100%))"
+          oninput="updateZone('${z.key}','l',this.value)">
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function updateZone(key, channel, value) {
+  theme[key][channel] = parseInt(value);
+  applyTheme();
+}
+
+function downloadTheme() {
+  const blob = new Blob([JSON.stringify(theme, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'sat-theme.json'; a.click();
+}
+
+function loadTheme(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const d = JSON.parse(reader.result);
+      if (d.accent && d.bg && d.surface && d.text) { theme = d; applyTheme(); }
+      else alert('Invalid theme file.');
+    } catch { alert('Could not read theme file.'); }
+  };
+  reader.readAsText(file); e.target.value = '';
+}
+
+function resetTheme() { theme = buildDefaultTheme(); applyTheme(); }
+
+function toggleSettings() { document.getElementById('settings-panel').classList.toggle('open'); }
+document.addEventListener('click', e => {
+  const p = document.getElementById('settings-panel'), b = document.querySelector('.settings-btn');
+  if (!p.contains(e.target) && !b.contains(e.target)) p.classList.remove('open');
+});
+
+// ── WORDS ──
+let words = JSON.parse(localStorage.getItem('sat-words') || '[]');
+let fcOrder = words.map((_,i)=>i), fcIdx = 0;
+
+function saveWords() { localStorage.setItem('sat-words', JSON.stringify(words)); }
+
+function showCard() {
+  document.getElementById('card').classList.remove('flipped');
+  if (!words.length) { document.getElementById('fc-word').textContent = 'No words yet'; document.getElementById('fc-def').textContent = 'Add some below'; document.getElementById('fc-counter').textContent = '0 / 0'; return; }
+  const w = words[fcOrder[fcIdx]];
+  document.getElementById('fc-word').textContent = w.word;
+  document.getElementById('fc-def').textContent = w.definition;
+  document.getElementById('fc-counter').textContent = `${fcIdx+1} / ${fcOrder.length}`;
+}
+
+function flipCard() { document.getElementById('card').classList.toggle('flipped'); }
+function nextCard() { if (!words.length) return; fcIdx = (fcIdx+1)%fcOrder.length; showCard(); }
+function prevCard() { if (!words.length) return; fcIdx = (fcIdx-1+fcOrder.length)%fcOrder.length; showCard(); }
+function shuffleFlash() {
+  for (let i=fcOrder.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [fcOrder[i],fcOrder[j]]=[fcOrder[j],fcOrder[i]]; }
+  fcIdx=0; showCard();
+}
+
+// ── QUIZ ──
+let quizMode = 'infinite';
+let quizLimit = 0;
+let quizQ = 0, quizCorrect = 0;
+let quizAnswered = false, quizCorrectIdx = 0;
+let quizCorrectWords = [], quizWrongWords = [];
+
+function selectQuizMode(m) {
+  quizMode = m;
+  document.getElementById('mode-infinite').classList.toggle('active', m==='infinite');
+  document.getElementById('mode-limited').classList.toggle('active', m==='limited');
+  document.getElementById('limit-input-row').style.display = m==='limited' ? 'flex' : 'none';
+}
+
+function startQuiz() {
+  if (words.length < 2) { alert('Add at least 2 words first.'); return; }
+  if (quizMode === 'limited') {
+    const v = parseInt(document.getElementById('quiz-limit').value);
+    if (isNaN(v) || v < 1) { alert('Enter a valid number of questions.'); return; }
+    quizLimit = Math.min(v, words.length);
+  }
+  quizQ = 0; quizCorrect = 0; quizCorrectWords = []; quizWrongWords = [];
+  document.getElementById('quiz-setup').style.display = 'none';
+  document.getElementById('quiz-results').style.display = 'none';
+  document.getElementById('quiz-active').style.display = 'block';
+  nextQuestion();
+}
+
+function nextQuestion() {
+  if (quizMode === 'limited' && quizQ >= quizLimit) { showResults(); return; }
+  quizAnswered = false;
+  document.getElementById('q-feedback').textContent = '';
+  document.getElementById('q-next').style.display = 'none';
+
+  const ci = Math.floor(Math.random() * words.length);
+  quizCorrectIdx = ci;
+  document.getElementById('q-word').textContent = words[ci].word;
+
+  const label = quizMode === 'limited' ? `${quizQ+1} / ${quizLimit}` : `Q${quizQ+1}`;
+  document.getElementById('q-progress').textContent = label;
+  document.getElementById('q-live-score').textContent = quizQ > 0 ? `${quizCorrect} / ${quizQ} correct` : '';
+
+  const pool = words.map((_,i)=>i).filter(i=>i!==ci);
+  for (let i=pool.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+  const opts = [ci, ...pool.slice(0, Math.min(3, pool.length))];
+  for (let i=opts.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [opts[i],opts[j]]=[opts[j],opts[i]]; }
+
+  const container = document.getElementById('q-options');
+  container.innerHTML = '';
+  opts.forEach(idx => {
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.textContent = words[idx].definition;
+    btn.onclick = () => answerQ(btn, idx === ci, ci);
+    container.appendChild(btn);
+  });
+}
+
+function answerQ(btn, isCorrect, ci) {
+  if (quizAnswered) return;
+  quizAnswered = true; quizQ++;
+  if (isCorrect) {
+    btn.classList.add('correct'); quizCorrect++;
+    document.getElementById('q-feedback').textContent = '✓ Correct!';
+    document.getElementById('q-feedback').style.color = 'var(--accent)';
+    quizCorrectWords.push(words[ci].word);
+  } else {
+    btn.classList.add('wrong');
+    document.querySelectorAll('.option').forEach(o => { if (o.textContent === words[ci].definition) o.classList.add('correct'); });
+    document.getElementById('q-feedback').textContent = '✗ Wrong';
+    document.getElementById('q-feedback').style.color = '#ff5555';
+    quizWrongWords.push(words[ci].word);
+  }
+  document.querySelectorAll('.option').forEach(o => o.disabled = true);
+  document.getElementById('q-live-score').textContent = `${quizCorrect} / ${quizQ} correct`;
+  if (quizMode === 'limited' && quizQ >= quizLimit) {
+    document.getElementById('q-next').textContent = 'See Results →';
+  }
+  document.getElementById('q-next').style.display = 'inline-block';
+}
+
+function endQuiz() { if (quizQ === 0) { showQuizSetup(); return; } showResults(); }
+
+function showResults() {
+  document.getElementById('quiz-active').style.display = 'none';
+  document.getElementById('quiz-results').style.display = 'block';
+
+  const pct = quizQ === 0 ? 0 : Math.round((quizCorrect / quizQ) * 100);
+  document.getElementById('r-pct').textContent = pct + '%';
+  document.getElementById('r-sub').textContent = `${quizCorrect} correct out of ${quizQ} questions`;
+
+  const lists = document.getElementById('r-lists');
+  lists.innerHTML = '';
+
+  const rightEl = document.createElement('div');
+  rightEl.className = 'result-group right';
+  rightEl.innerHTML = `<div class="result-group-title">✓ Got Right (${quizCorrectWords.length})</div>` +
+    (quizCorrectWords.length ? quizCorrectWords.map(w=>`<div class="result-word">${w}</div>`).join('') : '<div class="result-word" style="color:var(--muted)">none</div>');
+
+  const wrongEl = document.createElement('div');
+  wrongEl.className = 'result-group wrong';
+  wrongEl.innerHTML = `<div class="result-group-title">✗ Got Wrong (${quizWrongWords.length})</div>` +
+    (quizWrongWords.length ? quizWrongWords.map(w=>`<div class="result-word">${w}</div>`).join('') : '<div class="result-word" style="color:var(--muted)">none</div>');
+
+  lists.appendChild(rightEl);
+  lists.appendChild(wrongEl);
+
+  document.getElementById('wrong-prompt').style.display = quizWrongWords.length > 0 ? 'block' : 'none';
+}
+
+function showQuizSetup() {
+  document.getElementById('quiz-setup').style.display = 'block';
+  document.getElementById('quiz-active').style.display = 'none';
+  document.getElementById('quiz-results').style.display = 'none';
+}
+
+// ── FOCUSED STUDY ──
+let focusSet = [], focusIdx = 0;
+let focusFromQuiz = false;
+
+function downloadFocusJSON() {
+  const data = focusSet.map(i => words[i]);
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'wrong-words.json'; a.click();
+}
+
+function studyWrong() {
+  focusFromQuiz = true;
+  const wrongIndices = quizWrongWords
+    .map(w => words.findIndex(wd => wd.word === w))
+    .filter(i => i !== -1);
+  focusSet = [...new Set(wrongIndices)];
+  focusIdx = 0;
+  switchMode('focus');
+  document.getElementById('focus-setup').style.display = 'none';
+  document.getElementById('focus-card-wrap').style.display = 'flex';
+  document.getElementById('focus-dl-btn').style.display = 'inline-block';
+  showFocusCard();
+}
+
+function startFocus() {
+  const raw = parseInt(document.getElementById('focus-count').value);
+  const count = isNaN(raw) ? 10 : Math.max(2, Math.min(raw, words.length));
+  if (words.length < 2) { alert('Add at least 2 words first.'); return; }
+  const s = words.map((_,i)=>i);
+  for (let i=s.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [s[i],s[j]]=[s[j],s[i]]; }
+  focusSet = s.slice(0, count); focusIdx = 0;
+  document.getElementById('focus-setup').style.display = 'none';
+  document.getElementById('focus-card-wrap').style.display = 'flex';
+  showFocusCard();
+}
+
+function showFocusCard() {
+  document.getElementById('focus-card').classList.remove('flipped');
+  const w = words[focusSet[focusIdx]];
+  document.getElementById('foc-word').textContent = w.word;
+  document.getElementById('foc-def').textContent = w.definition;
+  document.getElementById('foc-counter').textContent = `${focusIdx+1} / ${focusSet.length}`;
+}
+
+function flipFocusCard() { document.getElementById('focus-card').classList.toggle('flipped'); }
+function nextFocus() { focusIdx = (focusIdx+1)%focusSet.length; showFocusCard(); }
+function prevFocus() { focusIdx = (focusIdx-1+focusSet.length)%focusSet.length; showFocusCard(); }
+
+function resetFocusSetup() {
+  focusFromQuiz = false;
+  document.getElementById('focus-setup').style.display = 'block';
+  document.getElementById('focus-card-wrap').style.display = 'none';
+  document.getElementById('focus-setup-msg').textContent = 'Pick a number of words to study.\nA random set will be pulled from your list.';
+  document.getElementById('focus-input-row').style.display = 'flex';
+  document.getElementById('focus-count').value = '';
+  document.getElementById('focus-dl-btn').style.display = 'none';
+}
+
+// ── TABS ──
+function switchMode(mode) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['flash','quiz','focus'][i] === mode));
+  document.getElementById('flash-view').style.display = mode==='flash' ? 'flex' : 'none';
+  document.getElementById('quiz-view').style.display  = mode==='quiz'  ? 'block' : 'none';
+  document.getElementById('focus-view').style.display = mode==='focus' ? 'block' : 'none';
+  if (mode==='quiz') showQuizSetup();
+  if (mode==='focus' && !focusFromQuiz) resetFocusSetup();
+}
+
+// ── ADD WORDS ──
+function addWord() {
+  const w = document.getElementById('word-input').value.trim();
+  const d = document.getElementById('def-input').value.trim();
+  if (!w || !d) return;
+  words.push({ word: w, definition: d });
+  fcOrder = words.map((_,i)=>i); fcIdx = words.length-1;
+  saveWords();
+  document.getElementById('word-input').value = '';
+  document.getElementById('def-input').value = '';
+  showCard();
+}
+
+document.getElementById('def-input').addEventListener('keydown', e => { if (e.key==='Enter') addWord(); });
+
+function downloadJSON() {
+  const blob = new Blob([JSON.stringify(words,null,2)],{type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'sat-words.json'; a.click();
+}
+
+function importJSON(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const d = JSON.parse(reader.result);
+      if (Array.isArray(d)) { words=d; fcOrder=words.map((_,i)=>i); fcIdx=0; saveWords(); showCard(); }
+    } catch { alert('Invalid JSON.'); }
+  };
+  reader.readAsText(file); e.target.value='';
+}
+
+// ── INIT ──
+buildColorZones();
+applyTheme();
+showCard();
+</script>
+</body>
+</html>
