@@ -901,7 +901,9 @@ function renderGroupsPage() {
       </div>
       <div class="group-card-count">${g.words.length} word${g.words.length !== 1 ? 's' : ''}</div>
       <div class="group-card-actions">
-        ${isPreset ? '<button class="group-action-btn" onclick="event.stopPropagation();resetPreset()">Reset</button>' : `<button class="group-action-btn" onclick="event.stopPropagation();renameGroup('${g.id}')">Rename</button><button class="group-action-btn danger" onclick="event.stopPropagation();deleteGroup('${g.id}')">Delete</button>`}
+        <button class="group-action-btn" onclick="event.stopPropagation();renameGroup('${g.id}')">Rename</button>
+        ${isPreset ? '<button class="group-action-btn" onclick="event.stopPropagation();resetPreset()" style="color:var(--accent);">Reset</button>' : ''}
+        <button class="group-action-btn danger" onclick="event.stopPropagation();deleteGroup('${g.id}')">Delete</button>
       </div>
     `;
     card.addEventListener('click', () => switchGroup(g.id));
@@ -919,7 +921,12 @@ function createGroup() {
   const name = prompt('Group name:');
   if (!name || !name.trim()) return;
   const id = 'g_' + Date.now();
-  groups.push({ id, name: name.trim(), words: [] });
+  let startWords = [];
+  if (SAT_PRESET_WORDS.length > 0) {
+    const usePreset = confirm('Start with SAT 1000 preset words?\nOK = load preset  |  Cancel = start empty');
+    if (usePreset) startWords = SAT_PRESET_WORDS.map(w => ({...w}));
+  }
+  groups.push({ id, name: name.trim(), words: startWords });
   saveGroups(); renderGroupsPage();
 }
 
@@ -932,10 +939,9 @@ function renameGroup(id) {
 }
 
 function deleteGroup(id) {
-  if (id === SAT_PRESET_ID) return; // can't delete preset
   if (!confirm('Delete this group and all its words?')) return;
   groups = groups.filter(g => g.id !== id);
-  if (groups.length === 0) groups = [{ id: 'default', name: 'All Words', words: [] }];
+  if (groups.length === 0) groups = [];
   if (activeGroupId === id) { activeGroupId = groups[0].id; words = getActiveGroup().words; fcOrder = []; fcIdx = 0; showCard(); renderWordList(); }
   saveGroups(); renderGroupsPage();
 }
@@ -1403,11 +1409,35 @@ function resolveImport(merge) {
   saveWords(); showCard(); renderWordList();
 }
 
+let lastDeletedWord = null;
 function deleteWord(idx) {
+  lastDeletedWord = { word: {...words[idx]}, idx };
   words.splice(idx, 1);
   fcOrder = words.map((_,i)=>i);
   fcIdx = Math.min(fcIdx, Math.max(0, words.length-1));
   saveWords(); showCard(); renderWordList();
+  showUndoToast();
+}
+function undoDelete() {
+  if (!lastDeletedWord) return;
+  const { word, idx } = lastDeletedWord;
+  words.splice(Math.min(idx, words.length), 0, word);
+  lastDeletedWord = null;
+  fcOrder = words.map((_,i)=>i);
+  saveWords(); showCard(); renderWordList();
+  hideUndoToast();
+}
+function showUndoToast() {
+  let t = document.getElementById('undo-toast');
+  if (!t) return;
+  t.classList.add('visible');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(hideUndoToast, 5000);
+}
+function hideUndoToast() {
+  const t = document.getElementById('undo-toast');
+  if (t) t.classList.remove('visible');
+  lastDeletedWord = null;
 }
 
 function renderWordList() {
@@ -1505,5 +1535,22 @@ showHome();
     </div>
   </div>
 </div>
+
+<div id="undo-toast" style="
+  position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:var(--surface); border:1px solid var(--accent); border-radius:10px;
+  padding:10px 18px; display:flex; align-items:center; gap:12px;
+  font-size:0.82rem; color:var(--text); box-shadow:0 4px 20px #0006;
+  opacity:0; transition:opacity 0.2s, transform 0.2s; pointer-events:none; z-index:9999;
+">
+  <span>Word deleted</span>
+  <button onclick="undoDelete()" style="
+    background:var(--accent); color:#000; border:none; border-radius:6px;
+    padding:4px 12px; font-size:0.8rem; cursor:pointer; font-weight:600;
+  ">Undo</button>
+</div>
+<style>
+  #undo-toast.visible { opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
+</style>
 </body>
 </html>
