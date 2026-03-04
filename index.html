@@ -852,7 +852,7 @@ let activeGroupId = localStorage.getItem('sat-active-group') || 'default';
 if (!groups.find(g => g.id === activeGroupId)) activeGroupId = groups[0].id;
 
 // Load SAT preset from external file in the background
-fetch('sat-vocab.json')
+fetch('sat-words.json')
   .then(r => r.json())
   .then(data => {
     SAT_PRESET_WORDS = data;
@@ -862,7 +862,7 @@ fetch('sat-vocab.json')
     }
     renderGroupsPage();
   })
-  .catch(() => console.warn('sat-vocab.json not found — SAT preset unavailable'));
+  .catch(() => console.warn('sat-words.json not found — SAT preset unavailable'));
 
 function getActiveGroup() { return groups.find(g => g.id === activeGroupId) || groups[0]; }
 function saveGroups() { localStorage.setItem('sat-groups', JSON.stringify(groups)); localStorage.setItem('sat-active-group', activeGroupId); }
