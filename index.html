@@ -536,18 +536,14 @@ function startWordTimer(word) {
 function stopWordTimer() {
   if (!_cardShownAt || !_trackingWord) return;
   const secs = Math.round((Date.now() - _cardShownAt) / 1000);
-  if (secs > 0 && secs < 300) {
-    // write to the group that was active when the card was shown, not the current one
-    const data = getWordAnalytics();
-    const gid = _trackingGroupId || activeGroupId;
-    if (!data[gid]) data[gid] = {};
-    if (!data[gid][_trackingWord]) data[gid][_trackingWord] = { quizCorrect:0, quizWrong:0, focusHard:0, focusMid:0, focusEasy:0, flashViews:0 };
-    data[gid][_trackingWord]['timeSeconds'] = (data[gid][_trackingWord]['timeSeconds'] || 0) + secs;
-    saveWordAnalytics(data);
-  }
+  const gid = _trackingGroupId || activeGroupId;
   _cardShownAt = null;
+  const word = _trackingWord;
   _trackingWord = null;
   _trackingGroupId = null;
+  if (secs > 0 && secs < 300 && gid) {
+    recordAnalytic(word, 'timeSeconds', secs, gid);
+  }
 }
 
 // stop timer when user leaves the tab
@@ -576,11 +572,12 @@ function getGroupAnalytics() {
 }
 let _sessionGroupId = null; // locked when a study session starts
 
-function recordAnalytic(word, field, amount=1) {
+function recordAnalytic(word, field, amount=1, groupIdOverride) {
   const data = getWordAnalytics();
-  const gid = _sessionGroupId || activeGroupId;
+  const gid = groupIdOverride || _sessionGroupId || activeGroupId;
+  if (!gid) return;
   if (!data[gid]) data[gid] = {};
-  if (!data[gid][word]) data[gid][word] = { quizCorrect:0, quizWrong:0, focusHard:0, focusMid:0, focusEasy:0, flashViews:0 };
+  if (!data[gid][word]) data[gid][word] = { quizCorrect:0, quizWrong:0, focusHard:0, focusMid:0, focusEasy:0, flashViews:0, timeSeconds:0 };
   data[gid][word][field] = (data[gid][word][field] || 0) + amount;
   saveWordAnalytics(data);
 }
