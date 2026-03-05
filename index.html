@@ -843,8 +843,10 @@ function doResetAllData() {
   // Re-fetch SAT preset then show groups page
   const hp = document.getElementById('home-page');
   hp.style.display = 'none';
+  _satPresetLoaded = false;
   fetch('sat-words.json').then(r => r.json()).then(data => {
     SAT_PRESET_WORDS = data;
+    _satPresetLoaded = true;
     groups = [{ id: SAT_PRESET_ID, name: 'SAT 1000', words: data.map(w => ({...w})), preset: true }];
     activeGroupId = SAT_PRESET_ID;
     words = getActiveGroup().words;
@@ -986,6 +988,7 @@ function refreshWordListForMode() {
 // ── GROUPS ──
 const SAT_PRESET_ID = 'sat-preset-1000';
 let SAT_PRESET_WORDS = [];
+let _satPresetLoaded = false;
 
 // ── MIGRATION (never wipes data, just patches missing fields) ──
 function migrateData() {
@@ -1005,20 +1008,29 @@ function migrateData() {
     if (!Array.isArray(grp.words)) { grp.words = []; changed = true; }
   });
 
-  // Deduplicate groups by name — keep the one with more words (or the preset id one)
-  const seen = {};
+  // Deduplicate by id first, then by name
+  const seenIds = {}, seenNames = {};
   const deduped = [];
   g.forEach(grp => {
-    const key = grp.name.trim().toLowerCase();
-    if (seen[key] !== undefined) {
-      // keep whichever has more words, or prefer SAT_PRESET_ID
-      const existing = deduped[seen[key]];
-      if (grp.id === SAT_PRESET_ID || grp.words.length > existing.words.length) {
-        deduped[seen[key]] = grp;
+    const idKey   = grp.id;
+    const nameKey = grp.name.trim().toLowerCase();
+    if (seenIds[idKey] !== undefined) {
+      // same id — keep the one with more words
+      const ei = seenIds[idKey];
+      if (grp.words.length > deduped[ei].words.length) deduped[ei] = grp;
+      changed = true;
+    } else if (seenNames[nameKey] !== undefined) {
+      // same name different id — keep preset id or more words
+      const ei = seenNames[nameKey];
+      if (grp.id === SAT_PRESET_ID || grp.words.length > deduped[ei].words.length) {
+        seenIds[deduped[ei].id] = undefined;
+        deduped[ei] = grp;
+        seenIds[idKey] = ei;
       }
       changed = true;
     } else {
-      seen[key] = deduped.length;
+      seenIds[idKey]     = deduped.length;
+      seenNames[nameKey] = deduped.length;
       deduped.push(grp);
     }
   });
@@ -1047,7 +1059,10 @@ fetch('sat-words.json')
   .then(r => r.json())
   .then(data => {
     SAT_PRESET_WORDS = data;
-    if (!groups.find(g => g.id === SAT_PRESET_ID)) {
+    // Deduplicate: remove any extra copies of the preset before adding
+    groups = groups.filter((g, i) => !(g.id === SAT_PRESET_ID && i !== groups.findIndex(x => x.id === SAT_PRESET_ID)));
+    if (!_satPresetLoaded && !groups.find(g => g.id === SAT_PRESET_ID)) {
+      _satPresetLoaded = true;
       groups.push({ id: SAT_PRESET_ID, name: 'SAT 1000', words: data.map(w => ({...w})), preset: true });
       localStorage.setItem('sat-groups', JSON.stringify(groups));
     }
