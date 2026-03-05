@@ -811,7 +811,6 @@ function renderGroupsPage() {
   groups.forEach(g => {
     const card = document.createElement('div');
     card.className = 'group-card' + (g.id === activeGroupId ? ' selected' : '');
-    card.dataset.groupId = g.id;
     const isSatPreset = g.id === SAT_PRESET_ID;
     const showPresetBadge = isSatPreset || g.preset === true;
     card.innerHTML = `
@@ -951,8 +950,12 @@ function confirmDeleteGroup() {
   }
   saveGroups();
   // remove the card directly from the DOM immediately
-  const deadCard = document.querySelector(`.group-card[data-group-id="${id}"]`);
-  if (deadCard) deadCard.remove();
+  const grid = document.getElementById('groups-grid');
+  const cards = grid.querySelectorAll('.group-card');
+  cards.forEach(card => {
+    // find the card whose rename/delete buttons reference this id
+    if (card.querySelector(`[onclick*="${id}"]`)) card.remove();
+  });
 }
 
 function resetPreset() {
