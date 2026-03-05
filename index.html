@@ -363,7 +363,7 @@
   <div class="s-title">Background</div>
   <div class="bg-preset-grid" id="bg-preset-grid"></div>
   <hr class="divider">
-  <div class="s-title">Fonts</div>
+  <div class="s-title">Font & Style</div>
   <div class="font-theme-grid" id="font-theme-grid"></div>
   <hr class="divider">
   <div class="s-title" style="color:#ff5555;">Danger Zone</div>
@@ -697,6 +697,7 @@ function showHome() {
   hp.style.display = 'flex';
   hp.classList.remove('hiding');
   hideGroupsPage();
+  const wm = document.getElementById('sat-wordmark'); if (wm) wm.style.display = 'block';
 }
 
 // ── THEME ──
@@ -1148,6 +1149,7 @@ function switchGroup(id) {
   _sessionGroupId = null;
   saveGroups();
   // update label immediately
+  const _wm = document.getElementById('sat-wordmark'); if (_wm) _wm.style.display = 'none';
   const lbl = document.getElementById('active-group-label');
   if (lbl) lbl.textContent = getActiveGroup().name;
   // if coming from home page, animate it away
@@ -1333,6 +1335,7 @@ function showGroupsPage() {
   stopWordTimer();
   document.getElementById('groups-page').classList.add('active');
   renderGroupsPage();
+  const wm = document.getElementById('sat-wordmark'); if (wm) wm.style.display = 'none';
 }
 
 function hideGroupsPage() {
