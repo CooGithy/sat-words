@@ -38,6 +38,8 @@
   /* SETTINGS */
   .settings-btn { position: fixed; top: 16px; right: 16px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); width: 36px; height: 36px; border-radius: 50%; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 600; transition: border-color 0.15s, color 0.15s; }
   .settings-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .settings-btn::after { content: 'Settings'; position: absolute; top: 52px; right: 0; background: #000c; color: #fff; font-size: 0.6rem; font-family: 'IBM Plex Mono', monospace; padding: 4px 9px; border-radius: 6px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.15s; letter-spacing: 0.5px; }
+  .settings-btn:hover::after { opacity: 1; }
 
   .settings-panel { position: fixed; top: 60px; right: 16px; background: var(--settings-bg); border: 1px solid var(--border); border-radius: 16px; padding: 20px; width: 260px; z-index: 600; display: none; flex-direction: column; gap: 16px; box-shadow: 0 8px 40px rgba(0,0,0,0.5); max-height: 80vh; overflow-y: auto; }
   .settings-panel.open { display: flex; }
@@ -200,6 +202,7 @@
   .rating-easy:hover { background: #7ecb20; color: #000; }
   /* BG PRESETS */
   .bg-preset-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 8px; }
+  #undo-toast.visible { opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
   .bg-preset-wrap { position: relative; }
   .bg-preset-btn { width: 100%; aspect-ratio: 1; border-radius: 8px; border: 2px solid transparent; cursor: pointer; transition: all 0.15s; padding: 0; display: block; }
   .bg-preset-btn:hover { transform: scale(1.12); box-shadow: 0 3px 10px rgba(0,0,0,0.4); z-index: 2; position: relative; }
@@ -233,15 +236,15 @@
   .cta-sub { font-size: 0.7rem; color: var(--muted); }
 
   /* ── GROUPS PAGE ── */
-  #groups-page { position: fixed; inset: 0; background: var(--bg); z-index: 400; display: none; flex-direction: column; align-items: center; padding: 60px 24px 40px; overflow-y: auto; }
+  #groups-page { position: fixed; inset: 0; background: var(--bg); z-index: 400; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px; overflow-y: auto; }
   #groups-page.active { display: flex; }
-  .groups-header { display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 700px; margin-bottom: 32px; }
-  .groups-header h2 { font-family: 'Playfair Display', serif; font-size: 1.6rem; color: var(--text); }
+  .groups-header { text-align: center; margin-bottom: 40px; }
+  .groups-header h2 { font-family: 'Playfair Display', serif; font-size: 3.8rem; color: var(--text); margin: 0; }
   .groups-header h2 span { color: var(--accent); }
   .groups-back { background: none; border: 1px solid var(--border); color: var(--muted); padding: 7px 16px; border-radius: 999px; font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; cursor: pointer; transition: all 0.15s; }
   .groups-back:hover { border-color: var(--text); color: var(--text); }
 
-  .groups-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; width: 100%; max-width: 700px; }
+  .groups-grid { display: grid; grid-template-columns: repeat(3, 260px); gap: 16px; margin: 0 auto; }
   .group-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 22px 20px; cursor: pointer; transition: all 0.15s; display: flex; flex-direction: column; gap: 8px; position: relative; }
   .group-card:hover { border-color: var(--accent); }
   .group-card.selected { border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 2px var(--accent); }
@@ -301,9 +304,9 @@
 
 <!-- GROUPS PAGE -->
 <div id="groups-page">
+  <button class="groups-back" onclick="showHome()" style="position:absolute;top:20px;left:24px;">← Home</button>
   <div class="groups-header">
     <h2>My <span>Groups</span></h2>
-    <button class="groups-back" onclick="showHome()">← Home</button>
   </div>
   <div class="groups-grid" id="groups-grid"></div>
 </div>
@@ -1446,15 +1449,20 @@ function undoDelete() {
   hideUndoToast();
 }
 function showUndoToast() {
-  let t = document.getElementById('undo-toast');
+  const t = document.getElementById('undo-toast');
   if (!t) return;
-  t.classList.add('visible');
-  clearTimeout(t._timer);
-  t._timer = setTimeout(hideUndoToast, 5000);
+  clearTimeout(window._undoTimer);
+  t.style.opacity = '1';
+  t.style.transform = 'translateX(-50%) translateY(0)';
+  t.style.pointerEvents = 'auto';
+  window._undoTimer = setTimeout(hideUndoToast, 5000);
 }
 function hideUndoToast() {
   const t = document.getElementById('undo-toast');
-  if (t) t.classList.remove('visible');
+  if (!t) return;
+  t.style.opacity = '0';
+  t.style.transform = 'translateX(-50%) translateY(20px)';
+  t.style.pointerEvents = 'none';
   lastDeletedWord = null;
 }
 
@@ -1553,22 +1561,8 @@ showHome();
   </div>
 </div>
 
-<div id="undo-toast" style="
-  position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px);
-  background:var(--surface); border:1px solid var(--accent); border-radius:10px;
-  padding:10px 18px; display:flex; align-items:center; gap:12px;
-  font-size:0.82rem; color:var(--text); box-shadow:0 4px 20px #0006;
-  opacity:0; transition:opacity 0.2s, transform 0.2s; pointer-events:none; z-index:9999;
-">
-  <span>Word deleted</span>
-  <button onclick="undoDelete()" style="
-    background:var(--accent); color:#000; border:none; border-radius:6px;
-    padding:4px 12px; font-size:0.8rem; cursor:pointer; font-weight:600;
-  ">Undo</button>
-</div>
-<style>
-  #undo-toast.visible { opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
-</style>
+
+
 
 <div class="modal-overlay" id="new-group-modal">
   <div class="modal" style="max-width:420px;text-align:left;">
@@ -1665,6 +1659,19 @@ document.addEventListener('keydown', e => {
       <button class="btn" onclick="closeResetModal()">Cancel</button>
     </div>
   </div>
+</div>
+<div id="undo-toast" style="
+  position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:var(--surface); border:1px solid var(--accent); border-radius:10px;
+  padding:10px 18px; display:flex; align-items:center; gap:12px;
+  font-size:0.82rem; color:var(--text); box-shadow:0 4px 20px #0006;
+  opacity:0; transition:opacity 0.2s, transform 0.2s; pointer-events:none; z-index:9999;
+" id="undo-toast">
+  <span>Word deleted</span>
+  <button onclick="undoDelete()" style="
+    background:var(--accent); color:#000; border:none; border-radius:6px;
+    padding:4px 12px; font-size:0.8rem; cursor:pointer; font-weight:600;
+  ">Undo</button>
 </div>
 </body>
 </html>
