@@ -205,7 +205,7 @@
   .analytics-section-title { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; }
   .analytics-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
   .analytics-row:last-child { border-bottom: none; }
-  .analytics-word { font-family: 'Playfair Display', serif; font-size: 0.9rem; color: var(--text); min-width: 130px; flex-shrink: 0; }
+  .analytics-word { font-family: 'Playfair Display', serif; font-size: 0.88rem; color: var(--text); min-width: 130px; flex-shrink: 0; font-weight: normal; background: none; border: none; padding: 0; cursor: default; }
   .analytics-bar-wrap { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
   .analytics-bar { height: 100%; border-radius: 3px; transition: width 0.4s; }
   .analytics-val { font-size: 0.68rem; color: var(--muted); font-family: 'IBM Plex Mono', monospace; min-width: 32px; text-align: right; }
@@ -344,6 +344,9 @@
   <hr class="divider">
   <div class="s-title">Background</div>
   <div class="bg-preset-grid" id="bg-preset-grid"></div>
+  <hr class="divider">
+  <div class="s-title" style="color:#ff5555;">Danger Zone</div>
+  <button class="theme-btn" onclick="confirmResetAllData()" style="border-color:#ff5555;color:#ff5555;width:100%;">↺ Reset All Data</button>
 </div>
 
 <div class="top-header" style="position:relative;"><button class="groups-back" style="position:absolute;left:36px;" onclick="showGroupsPage()">← Groups</button><div style="display:flex;flex-direction:column;align-items:center;gap:2px;"><h1 style="margin:0;">SAT <span>Words</span></h1><span id="active-group-label" style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;"></span></div></div>
@@ -442,7 +445,7 @@
       </div>
       <div id="focus-results" style="display:none;">
         <div class="results-card" style="margin-bottom:20px;">
-          <div style="font-size:2rem;margin-bottom:4px;">🎉</div>
+          <div style="font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;">Session Complete</div>
           <div class="results-pct" id="foc-mastered-pct">—</div>
           <div class="results-sub" id="foc-results-sub">—</div>
         </div>
@@ -611,7 +614,7 @@ function renderAnalytics() {
     + '<div class="analytics-stat-box"><div class="analytics-stat-val">' + totalFocusReps + '</div><div class="analytics-stat-lbl">Focus Reps</div></div>'
     + '</div>';
 
-  html += '<div class="analytics-section"><div class="analytics-section-title">&#128308; Needs More Work</div>';
+  html += '<div class="analytics-section"><div class="analytics-section-title">— Needs More Work</div>';
   if (needWork.length === 0) {
     html += '<div class="analytics-empty" style="padding:12px 0;font-size:0.75rem;">Nothing flagged yet</div>';
   } else {
@@ -619,7 +622,7 @@ function renderAnalytics() {
   }
   html += '</div>';
 
-  html += '<div class="analytics-section"><div class="analytics-section-title">&#9989; Most Confident</div>';
+  html += '<div class="analytics-section"><div class="analytics-section-title">— Most Confident</div>';
   if (confident.length === 0) {
     html += '<div class="analytics-empty" style="padding:12px 0;font-size:0.75rem;">No confident words yet</div>';
   } else {
@@ -627,7 +630,7 @@ function renderAnalytics() {
   }
   html += '</div>';
 
-  html += '<div class="analytics-section"><div class="analytics-section-title">&#9201; Most Time Spent</div>';
+  html += '<div class="analytics-section"><div class="analytics-section-title">— Most Time Spent</div>';
   if (mostTime.length === 0) {
     html += '<div class="analytics-empty" style="padding:12px 0;font-size:0.75rem;">No time data yet</div>';
   } else {
@@ -795,6 +798,20 @@ function applyTheme() {
     }
   });
   localStorage.setItem('sat-theme2', JSON.stringify(theme));
+}
+
+function confirmResetAllData() {
+  document.getElementById('reset-all-modal').classList.add('open');
+}
+function closeResetAllModal() {
+  document.getElementById('reset-all-modal').classList.remove('open');
+}
+function doResetAllData() {
+  const keys = ['sat-groups','sat-active-group','sat-words','sat-theme2','sat-bg-preset',
+                 'sat-stats','sat-word-analytics','sat-passages-used','sat-reading-unlocked',
+                 'sat-grad','sat-grad-on','sat-app-version'];
+  keys.forEach(k => localStorage.removeItem(k));
+  location.reload();
 }
 
 function toggleSettings() {
@@ -1688,6 +1705,8 @@ function deleteWord(idx) {
   // update badge on the group card if groups page is open
   const gp = document.getElementById('groups-page');
   if (gp && gp.classList.contains('active')) renderGroupsPage();
+  // refresh analytics immediately if visible
+  if (activeMode === 'analytics') renderAnalytics();
   showUndoToast();
 }
 function undoDelete() {
@@ -1822,6 +1841,17 @@ showHome();
 
 
 
+
+<div class="modal-overlay" id="reset-all-modal">
+  <div class="modal" style="max-width:380px;text-align:center;">
+    <div class="modal-title" style="color:#ff5555;">Reset All Data</div>
+    <p class="modal-msg">This will permanently delete all your groups, words, analytics, and settings. The page will reload fresh.<br><br>This cannot be undone.</p>
+    <div class="modal-btns" style="justify-content:center;">
+      <button class="btn btn-danger" onclick="doResetAllData()" style="flex:1;">Reset Everything</button>
+      <button class="btn" onclick="closeResetAllModal()" style="flex:1;">Cancel</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="new-group-modal">
   <div class="modal" style="max-width:420px;text-align:left;">
     <div class="modal-title" style="margin-bottom:6px;">New Group</div>
