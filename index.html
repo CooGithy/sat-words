@@ -200,6 +200,21 @@
   .rating-mid:hover { background: #f0a060; color: #000; }
   .rating-easy { background: none; border-color: #7ecb20; color: #7ecb20; }
   .rating-easy:hover { background: #7ecb20; color: #000; }
+  /* ANALYTICS */
+  .analytics-section { margin-bottom: 10px; }
+  .analytics-section-title { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; }
+  .analytics-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .analytics-row:last-child { border-bottom: none; }
+  .analytics-word { font-family: 'Playfair Display', serif; font-size: 0.9rem; color: var(--text); min-width: 130px; flex-shrink: 0; }
+  .analytics-bar-wrap { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .analytics-bar { height: 100%; border-radius: 3px; transition: width 0.4s; }
+  .analytics-val { font-size: 0.68rem; color: var(--muted); font-family: 'IBM Plex Mono', monospace; min-width: 32px; text-align: right; }
+  .analytics-badge { font-size: 0.6rem; padding: 2px 8px; border-radius: 999px; font-family: 'IBM Plex Mono', monospace; }
+  .analytics-empty { font-size: 0.78rem; color: var(--muted); text-align: center; padding: 40px 0; }
+  .analytics-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 4px; }
+  .analytics-stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
+  .analytics-stat-val { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--accent); }
+  .analytics-stat-lbl { font-size: 0.58rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 3px; }
   /* BG PRESETS */
   .bg-preset-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 8px; }
   #undo-toast.visible { opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
@@ -461,6 +476,7 @@
       <button class="tab active" onclick="switchMode('flash')">Flashcards</button>
       <button class="tab" onclick="switchMode('quiz')">Quiz</button>
       <button class="tab" onclick="switchMode('focus')">Focused Study</button>
+      <button class="tab" onclick="switchMode('analytics')">Analytics</button>
     </div>
 
     <button class="shuffle-btn" id="shuffle-btn" onclick="handleShuffle()">⇄ Shuffle</button>
@@ -471,6 +487,11 @@
       <div class="word-list" id="word-list"></div>
     </div>
 
+
+    <!-- ANALYTICS PANEL -->
+    <div id="analytics-view" style="display:none;flex-direction:column;gap:18px;padding-bottom:20px;">
+      <div id="analytics-content"></div>
+    </div>
   </div><!-- end right-panel -->
 
 </div><!-- end app-layout -->
@@ -481,6 +502,145 @@
 let appStats = JSON.parse(localStorage.getItem('sat-stats') || '{"quizzesTaken":0,"bestScore":0}');
 
 function saveStats() { localStorage.setItem('sat-stats', JSON.stringify(appStats)); }
+
+// ── ANALYTICS ──
+// wordAnalytics[groupId][word] = { quizCorrect, quizWrong, focusHard, focusMid, focusEasy, flashViews }
+function getWordAnalytics() {
+  return JSON.parse(localStorage.getItem('sat-word-analytics') || '{}');
+}
+function saveWordAnalytics(data) {
+  localStorage.setItem('sat-word-analytics', JSON.stringify(data));
+}
+function getGroupAnalytics() {
+  const data = getWordAnalytics();
+  return data[activeGroupId] || {};
+}
+function recordAnalytic(word, field, amount=1) {
+  const data = getWordAnalytics();
+  if (!data[activeGroupId]) data[activeGroupId] = {};
+  if (!data[activeGroupId][word]) data[activeGroupId][word] = { quizCorrect:0, quizWrong:0, focusHard:0, focusMid:0, focusEasy:0, flashViews:0 };
+  data[activeGroupId][word][field] = (data[activeGroupId][word][field] || 0) + amount;
+  saveWordAnalytics(data);
+}
+function deleteWordAnalytic(word) {
+  const data = getWordAnalytics();
+  if (data[activeGroupId]) {
+    delete data[activeGroupId][word];
+    saveWordAnalytics(data);
+  }
+}
+
+function renderAnalytics() {
+  const el = document.getElementById('analytics-content');
+  if (!el) return;
+  const ga = getGroupAnalytics();
+  const wordList = Object.keys(ga);
+
+  if (wordList.length === 0) {
+    el.innerHTML = '<div class="analytics-empty">No data yet.<br>Start quizzing or studying to see analytics.</div>';
+    return;
+  }
+
+  // ── Summary stats ──
+  let totalQuizzes = 0, totalCorrect = 0, totalFocusSessions = 0, totalFlashViews = 0;
+  wordList.forEach(w => {
+    const d = ga[w];
+    totalCorrect += d.quizCorrect || 0;
+    totalQuizzes += (d.quizCorrect || 0) + (d.quizWrong || 0);
+    totalFocusSessions += (d.focusHard || 0) + (d.focusMid || 0) + (d.focusEasy || 0);
+    totalFlashViews += d.flashViews || 0;
+  });
+  const overallPct = totalQuizzes > 0 ? Math.round((totalCorrect/totalQuizzes)*100) : 0;
+
+  // ── Words needing most work (highest wrong+hard ratio) ──
+  const needWork = wordList
+    .map(w => {
+      const d = ga[w];
+      const attempts = (d.quizCorrect||0)+(d.quizWrong||0)+(d.focusHard||0)+(d.focusMid||0)+(d.focusEasy||0);
+      const struggles = (d.quizWrong||0)+(d.focusHard||0)+(d.focusMid||0)*0.5;
+      return { w, score: attempts > 0 ? struggles/attempts : 0, struggles, attempts };
+    })
+    .filter(x => x.attempts > 0)
+    .sort((a,b) => b.score - a.score)
+    .slice(0, 8);
+
+  // ── Most studied (most total interactions) ──
+  const mostStudied = wordList
+    .map(w => {
+      const d = ga[w];
+      const total = (d.quizCorrect||0)+(d.quizWrong||0)+(d.focusHard||0)+(d.focusMid||0)+(d.focusEasy||0)+(d.flashViews||0);
+      return { w, total };
+    })
+    .filter(x => x.total > 0)
+    .sort((a,b) => b.total - a.total)
+    .slice(0, 8);
+
+  // ── Best known (highest correct ratio with enough attempts) ──
+  const bestKnown = wordList
+    .map(w => {
+      const d = ga[w];
+      const attempts = (d.quizCorrect||0)+(d.quizWrong||0)+(d.focusHard||0)+(d.focusMid||0)+(d.focusEasy||0);
+      const correct = (d.quizCorrect||0)+(d.focusEasy||0);
+      return { w, pct: attempts >= 2 ? Math.round((correct/attempts)*100) : 0, attempts };
+    })
+    .filter(x => x.attempts >= 2)
+    .sort((a,b) => b.pct - a.pct)
+    .slice(0, 8);
+
+  const maxStudied = mostStudied[0]?.total || 1;
+  const maxWork = needWork[0]?.struggles || 1;
+
+  el.innerHTML = `
+    <div class="analytics-stat-grid">
+      <div class="analytics-stat-box">
+        <div class="analytics-stat-val">${overallPct}%</div>
+        <div class="analytics-stat-lbl">Quiz Accuracy</div>
+      </div>
+      <div class="analytics-stat-box">
+        <div class="analytics-stat-val">${totalFlashViews}</div>
+        <div class="analytics-stat-lbl">Cards Viewed</div>
+      </div>
+      <div class="analytics-stat-box">
+        <div class="analytics-stat-val">${totalFocusSessions}</div>
+        <div class="analytics-stat-lbl">Focus Reps</div>
+      </div>
+    </div>
+
+    <div class="analytics-section">
+      <div class="analytics-section-title">🔴 Needs More Work</div>
+      ${needWork.length === 0 ? '<div class="analytics-empty" style="padding:16px 0;">Nothing yet</div>' :
+        needWork.map(({w, struggles}) => `
+        <div class="analytics-row">
+          <div class="analytics-word">${w}</div>
+          <div class="analytics-bar-wrap"><div class="analytics-bar" style="width:${Math.round((struggles/maxWork)*100)}%;background:#ff5555;"></div></div>
+          <div class="analytics-val">${Math.round(struggles)}</div>
+        </div>`).join('')}
+    </div>
+
+    <div class="analytics-section">
+      <div class="analytics-section-title">✅ Most Confident</div>
+      ${bestKnown.length === 0 ? '<div class="analytics-empty" style="padding:16px 0;">Nothing yet</div>' :
+        bestKnown.map(({w, pct}) => `
+        <div class="analytics-row">
+          <div class="analytics-word">${w}</div>
+          <div class="analytics-bar-wrap"><div class="analytics-bar" style="width:${pct}%;background:#7ecb20;"></div></div>
+          <div class="analytics-val">${pct}%</div>
+        </div>`).join('')}
+    </div>
+
+    <div class="analytics-section">
+      <div class="analytics-section-title">⏱ Most Time Spent</div>
+      ${mostStudied.length === 0 ? '<div class="analytics-empty" style="padding:16px 0;">Nothing yet</div>' :
+        mostStudied.map(({w, total}) => `
+        <div class="analytics-row">
+          <div class="analytics-word">${w}</div>
+          <div class="analytics-bar-wrap"><div class="analytics-bar" style="width:${Math.round((total/maxStudied)*100)}%;background:var(--accent);"></div></div>
+          <div class="analytics-val">${total}</div>
+        </div>`).join('')}
+    </div>
+  `;
+}
+
 
 function enterApp() {
   const hp = document.getElementById('home-page');
@@ -777,6 +937,7 @@ function migrateData() {
 
   if (changed) localStorage.setItem('sat-groups', JSON.stringify(g));
 }
+
 migrateData();
 
 let groups = JSON.parse(localStorage.getItem('sat-groups') || 'null');
@@ -1006,6 +1167,11 @@ function hideGroupsPage() {
 }
 
 function showCard() {
+  // record flash view for current word
+  if (activeMode === 'flash' && words.length > 0 && fcOrder.length > 0) {
+    const wi = fcOrder[fcIdx % fcOrder.length];
+    if (words[wi]) recordAnalytic(words[wi].word, 'flashViews');
+  }
   document.getElementById('card').classList.remove('flipped');
   if (!words.length) { document.getElementById('fc-word').textContent = 'No words yet'; document.getElementById('fc-def').textContent = 'Add some below'; document.getElementById('fc-counter').textContent = '0 / 0'; return; }
   const w = words[fcOrder[fcIdx]];
@@ -1129,12 +1295,14 @@ function answerQ(btn, isCorrect, ci) {
   quizAnswered = true; quizQ++;
   if (isCorrect) {
     btn.classList.add('correct'); quizCorrect++;
+    recordAnalytic(words[ci].word, 'quizCorrect');
     document.getElementById('q-feedback').textContent = '✓ Correct!';
     document.getElementById('q-feedback').style.color = 'var(--accent)';
     quizCorrectWords.push(words[ci].word);
   } else {
     btn.classList.add('wrong');
     document.querySelectorAll('.option').forEach(o => { if (o.textContent === words[ci].definition) o.classList.add('correct'); });
+    recordAnalytic(words[ci].word, 'quizWrong');
     document.getElementById('q-feedback').textContent = '✗ Wrong';
     document.getElementById('q-feedback').style.color = '#ff5555';
     quizWrongWords.push(words[ci].word);
@@ -1295,6 +1463,8 @@ function rateFocus(rating) {
   const { item, queueIdx } = next;
   focusStatus[item.wordIdx] = rating;
 
+  const ratedWord = words[item.wordIdx]?.word;
+  if (ratedWord) recordAnalytic(ratedWord, rating === 'easy' ? 'focusEasy' : rating === 'mid' ? 'focusMid' : 'focusHard');
   if (rating === 'easy') {
     focusMasteredSet.add(item.wordIdx);
     // remove all future occurrences of this word
@@ -1379,6 +1549,20 @@ function resetFocusSetup() {
 
 // ── TABS ──
 function switchMode(mode) {
+  // hide analytics, restore shuffle unless going to analytics
+  document.getElementById('analytics-view').style.display = 'none';
+  document.getElementById('shuffle-btn').style.display = '';
+  if (mode === 'analytics') {
+    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===3));
+    document.getElementById('flash-view').style.display = 'none';
+    document.getElementById('quiz-view').style.display = 'none';
+    document.getElementById('focus-view').style.display = 'none';
+    document.getElementById('analytics-view').style.display = 'flex';
+    document.getElementById('shuffle-btn').style.display = 'none';
+    activeMode = 'analytics';
+    renderAnalytics();
+    return;
+  }
   document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['flash','quiz','focus'][i] === mode));
   document.getElementById('flash-view').style.display  = mode==='flash'  ? 'flex'  : 'none';
   document.getElementById('quiz-view').style.display   = mode==='quiz'   ? 'block' : 'none';
@@ -1451,7 +1635,9 @@ function resolveImport(merge) {
 
 let lastDeletedWord = null;
 function deleteWord(idx) {
-  lastDeletedWord = { word: {...words[idx]}, idx };
+  const _existingAnalytic = (getWordAnalytics()[activeGroupId] || {})[words[idx].word] || null;
+  lastDeletedWord = { word: {...words[idx]}, idx, analytics: _existingAnalytic };
+  deleteWordAnalytic(words[idx].word);
   words.splice(idx, 1);
   fcOrder = words.map((_,i)=>i);
   fcIdx = Math.min(fcIdx, Math.max(0, words.length-1));
@@ -1465,6 +1651,13 @@ function undoDelete() {
   if (!lastDeletedWord) return;
   const { word, idx } = lastDeletedWord;
   words.splice(Math.min(idx, words.length), 0, word);
+  // restore analytic data for the word (lastDeletedWord.analytics saved below)
+  if (lastDeletedWord.analytics) {
+    const data = getWordAnalytics();
+    if (!data[activeGroupId]) data[activeGroupId] = {};
+    data[activeGroupId][word.word] = lastDeletedWord.analytics;
+    saveWordAnalytics(data);
+  }
   lastDeletedWord = null;
   fcOrder = words.map((_,i)=>i);
   saveWords(); showCard(); renderWordList();
