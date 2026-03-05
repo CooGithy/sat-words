@@ -975,7 +975,7 @@ function refreshWordListForMode() {
   if (activeMode === 'analytics') {
     const lbl = document.getElementById('word-list-label');
     if (lbl) lbl.firstChild.textContent = 'All Words (';
-    ctxFlash = 'all';
+    ctxFlash = 'all'; ctxQuiz = 'all'; ctxFocus = 'all';
     renderWordList();
     return;
   }
@@ -1066,17 +1066,17 @@ fetch('sat-words.json')
       groups.push({ id: SAT_PRESET_ID, name: 'SAT 1000', words: data.map(w => ({...w})), preset: true });
       localStorage.setItem('sat-groups', JSON.stringify(groups));
     }
-    // Re-sync active group data now that preset is loaded
+    // Only re-sync if no valid group is selected yet
     if (!activeGroupId || !groups.find(g => g.id === activeGroupId)) {
       activeGroupId = groups.length ? groups[0].id : null;
-    }
-    const ag = getActiveGroup();
-    if (ag) {
-      words = ag.words;
-      fcOrder = words.map((_,i) => i); fcIdx = 0;
-      showCard(); renderWordList();
-      const lbl = document.getElementById('active-group-label');
-      if (lbl) lbl.textContent = ag.name;
+      const ag = getActiveGroup();
+      if (ag) {
+        words = ag.words;
+        fcOrder = words.map((_,i) => i); fcIdx = 0;
+        showCard(); renderWordList();
+        const lbl = document.getElementById('active-group-label');
+        if (lbl) lbl.textContent = ag.name;
+      }
     }
     renderGroupsPage();
   })
@@ -1761,6 +1761,9 @@ function switchMode(mode) {
     document.getElementById('shuffle-btn').style.display = 'none';
     document.getElementById('add-section').style.display = 'none';
     activeMode = 'analytics';
+    // ensure words reflects current group before rendering list
+    const _ag = getActiveGroup();
+    if (_ag) words = _ag.words;
     renderAnalytics();
     refreshWordListForMode();
     return;
