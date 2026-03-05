@@ -200,6 +200,24 @@
   .rating-mid:hover { background: #f0a060; color: #000; }
   .rating-easy { background: none; border-color: #7ecb20; color: #7ecb20; }
   .rating-easy:hover { background: #7ecb20; color: #000; }
+  /* READING */
+  .paywall-overlay { display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:28px 20px; background:var(--surface); border:1px solid var(--accent); border-radius:18px; text-align:center; }
+  .paywall-overlay.show { display:flex; }
+  .paywall-badge { font-size:0.6rem; background:var(--accent); color:#000; padding:3px 10px; border-radius:999px; font-family:'IBM Plex Mono',monospace; letter-spacing:1px; text-transform:uppercase; margin-bottom:4px; display:inline-block; }
+  .paywall-title { font-family:'Playfair Display',serif; font-size:1.4rem; color:var(--text); line-height:1.3; }
+  .paywall-sub { font-size:0.75rem; color:var(--muted); line-height:1.6; max-width:280px; }
+  .paywall-price-btn { background:var(--accent); color:#000; border:none; border-radius:999px; padding:12px 28px; font-family:'Playfair Display',serif; font-size:1rem; cursor:pointer; font-weight:700; transition:opacity 0.15s; width:100%; }
+  .paywall-price-btn:hover { opacity:0.85; }
+  .paywall-restore { background:none; border:none; color:var(--muted); font-family:'IBM Plex Mono',monospace; font-size:0.65rem; cursor:pointer; text-decoration:underline; margin-top:4px; }
+  .paywall-restore:hover { color:var(--text); }
+  .reading-counter { font-size:0.65rem; color:var(--muted); font-family:'IBM Plex Mono',monospace; text-align:right; margin-bottom:4px; }
+  .reading-counter span { color:var(--accent); font-weight:600; }
+  .reading-diff-btn { background:none; border:1px solid var(--border); color:var(--muted); padding:5px 12px; border-radius:999px; font-family:'IBM Plex Mono',monospace; font-size:0.68rem; cursor:pointer; transition:all 0.15s; }
+  .reading-diff-btn.active { background:var(--accent); border-color:var(--accent); color:#000; }
+  .reading-diff-btn:hover:not(.active) { border-color:var(--text); color:var(--text); }
+  .reading-highlight { background:var(--accent); color:#000; border-radius:3px; padding:1px 4px; font-weight:600; cursor:help; position:relative; }
+  .reading-spinner { width:28px; height:28px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
   /* ANALYTICS */
   .analytics-section { margin-bottom: 10px; }
   .analytics-section-title { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; }
@@ -459,6 +477,71 @@
       <div id="analytics-content"></div>
     </div>
 
+
+    <!-- READING VIEW -->
+    <div id="reading-view" style="display:none;flex-direction:column;gap:16px;overflow-y:auto;max-height:calc(100vh - 120px);padding-bottom:24px;">
+      <div id="reading-setup">
+        <div style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--accent);margin-bottom:6px;">AI Reading Passage</div>
+        <p style="font-size:0.78rem;color:var(--muted);line-height:1.6;margin-bottom:14px;">Generate a passage using words from your group. Words are woven into context to help them stick.</p>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <label style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;min-width:80px;">Words to use</label>
+            <input type="number" id="reading-word-count" min="3" max="20" value="8" style="width:70px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.8rem;" />
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <label style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;min-width:80px;">Difficulty</label>
+            <div style="display:flex;gap:6px;">
+              <button class="reading-diff-btn active" data-diff="easy" onclick="selectReadingDiff(this)">Easy</button>
+              <button class="reading-diff-btn" data-diff="medium" onclick="selectReadingDiff(this)">Medium</button>
+              <button class="reading-diff-btn" data-diff="hard" onclick="selectReadingDiff(this)">Hard</button>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <label style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;min-width:80px;">Theme</label>
+            <select id="reading-theme" style="flex:1;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;">
+              <option value="any">Any / Surprise me</option>
+              <option value="science">Science & Nature</option>
+              <option value="history">History & Society</option>
+              <option value="mystery">Mystery & Suspense</option>
+              <option value="philosophy">Philosophy & Ideas</option>
+              <option value="adventure">Adventure & Travel</option>
+              <option value="technology">Technology & Future</option>
+            </select>
+          </div>
+        </div>
+        <div class="reading-counter" id="reading-counter"></div>
+        <button class="btn" id="reading-gen-btn" onclick="generateReading()" style="width:100%;">✦ Generate Passage</button>
+        <div id="reading-error" style="display:none;font-size:0.72rem;color:#ff5555;margin-top:8px;"></div>
+      </div>
+
+      <!-- PAYWALL -->
+      <div class="paywall-overlay" id="paywall-overlay">
+        <div class="paywall-badge">Free limit reached</div>
+        <div class="paywall-title">You've used your 3 free passages</div>
+        <div class="paywall-sub">Unlock unlimited AI reading passages to keep building your vocabulary with context.</div>
+        <div style="font-size:2rem;">✦</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--muted);">One-time unlock</div>
+        <div style="font-family:'Playfair Display',serif;font-size:2.2rem;color:var(--accent);margin:-8px 0;">$2.99</div>
+        <button class="paywall-price-btn" onclick="goToCheckout()">Unlock Unlimited →</button>
+        <div style="font-size:0.65rem;color:var(--muted);">Already paid? <button class="paywall-restore" onclick="restoreAccess()">Restore access</button></div>
+      </div>
+
+      <div id="reading-output" style="display:none;flex-direction:column;gap:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div id="reading-title" style="font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--accent);"></div>
+          <button onclick="resetReading()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:4px 12px;border-radius:999px;font-family:'IBM Plex Mono',monospace;font-size:0.65rem;cursor:pointer;">↺ New</button>
+        </div>
+        <div id="reading-passage" style="font-size:0.85rem;line-height:1.9;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;"></div>
+        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px;">Words used in this passage</div>
+        <div id="reading-words-used" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      </div>
+
+      <div id="reading-loading" style="display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;padding:40px 0;">
+        <div class="reading-spinner"></div>
+        <div style="font-size:0.75rem;color:var(--muted);">Crafting your passage…</div>
+      </div>
+    </div>
+
     <!-- ADD WORDS -->
     <div class="add-section" id="add-section">
       <div class="add-row">
@@ -482,6 +565,7 @@
       <button class="tab" onclick="switchMode('quiz')">Quiz</button>
       <button class="tab" onclick="switchMode('focus')">Focused Study</button>
       <button class="tab" onclick="switchMode('analytics')">Analytics</button>
+      <button class="tab" onclick="switchMode('reading')">Reading</button>
     </div>
 
     <button class="shuffle-btn" id="shuffle-btn" onclick="handleShuffle()">⇄ Shuffle</button>
@@ -863,7 +947,6 @@ function resetTheme() {
   document.querySelectorAll('.bg-preset-btn').forEach(b => b.classList.remove('active'));
 }
 
-function toggleSettings() { document.getElementById('settings-panel').classList.toggle('open'); }
 document.addEventListener('click', e => {
   const p = document.getElementById('settings-panel'), b = document.querySelector('.settings-btn');
   if (!p.contains(e.target) && !b.contains(e.target)) p.classList.remove('open');
@@ -1552,10 +1635,190 @@ function resetFocusSetup() {
   ctxFocus = 'all'; refreshWordListForMode();
 }
 
+
+
+// ── PAYWALL ──
+const FREE_LIMIT = 3;
+// Replace with your real Stripe Payment Link URL
+const STRIPE_URL = 'https://buy.stripe.com/YOUR_LINK_HERE';
+// Replace with your real success/unlock page URL (where user gets their code)
+// Simplest: after Stripe payment, redirect to your site with ?unlocked=true
+// or use a code system described in the deploy instructions
+
+function getPassageCount() {
+  return parseInt(localStorage.getItem('sat-passages-used') || '0');
+}
+function isUnlocked() {
+  return localStorage.getItem('sat-reading-unlocked') === 'true';
+}
+function updateReadingCounter() {
+  const el = document.getElementById('reading-counter');
+  if (!el) return;
+  if (isUnlocked()) {
+    el.innerHTML = '<span>∞</span> Unlimited passages unlocked';
+  } else {
+    const used = getPassageCount();
+    const left = Math.max(0, FREE_LIMIT - used);
+    el.innerHTML = '<span>' + left + '</span> free passage' + (left !== 1 ? 's' : '') + ' remaining';
+  }
+}
+function checkPaywall() {
+  if (isUnlocked()) return false;
+  if (getPassageCount() < FREE_LIMIT) return false;
+  // show paywall
+  document.getElementById('reading-setup').style.display = 'none';
+  document.getElementById('paywall-overlay').classList.add('show');
+  return true;
+}
+function goToCheckout() {
+  window.open(STRIPE_URL, '_blank');
+}
+function restoreAccess() {
+  const code = prompt('Enter your unlock code:');
+  if (!code) return;
+  // Simple code check — set your own secret code in UNLOCK_CODE below
+  const UNLOCK_CODE = 'SATWORDS2024';
+  if (code.trim().toUpperCase() === UNLOCK_CODE) {
+    localStorage.setItem('sat-reading-unlocked', 'true');
+    document.getElementById('paywall-overlay').classList.remove('show');
+    document.getElementById('reading-setup').style.display = 'block';
+    updateReadingCounter();
+  } else {
+    alert('Invalid code. Check your email for the unlock code after purchase.');
+  }
+}
+// Check URL for ?unlocked=CODE on page load (Stripe redirect)
+(function checkUnlockParam() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('unlocked');
+  const UNLOCK_CODE = 'SATWORDS2024';
+  if (code && code.toUpperCase() === UNLOCK_CODE) {
+    localStorage.setItem('sat-reading-unlocked', 'true');
+  }
+})();
+
+// ── READING ──
+let _readingDiff = 'easy';
+
+function selectReadingDiff(btn) {
+  document.querySelectorAll('.reading-diff-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _readingDiff = btn.dataset.diff;
+}
+
+function resetReading() {
+  document.getElementById('reading-output').style.display = 'none';
+  document.getElementById('paywall-overlay').classList.remove('show');
+  document.getElementById('reading-setup').style.display = 'block';
+  updateReadingCounter();
+}
+
+async function generateReading() {
+  if (checkPaywall()) return;
+  if (words.length < 3) {
+    document.getElementById('reading-error').textContent = 'You need at least 3 words in your group.';
+    document.getElementById('reading-error').style.display = 'block';
+    return;
+  }
+  document.getElementById('reading-error').style.display = 'none';
+
+  const count = Math.min(parseInt(document.getElementById('reading-word-count').value) || 8, words.length);
+  const theme = document.getElementById('reading-theme').value;
+  const diff = _readingDiff;
+
+  // Pick random words from the group
+  const shuffled = [...words].sort(() => Math.random() - 0.5).slice(0, count);
+  const wordList = shuffled.map(w => w.word + ' (' + w.definition + ')').join(', ');
+
+  const diffDesc = diff === 'easy' ? 'simple, accessible prose for a middle schooler'
+    : diff === 'medium' ? 'moderately complex prose for a high schooler'
+    : 'sophisticated, SAT-level prose with complex sentence structures';
+
+  const themeDesc = theme === 'any' ? 'any interesting topic of your choice'
+    : theme === 'science' ? 'science or nature'
+    : theme === 'history' ? 'history or society'
+    : theme === 'mystery' ? 'mystery or suspense'
+    : theme === 'philosophy' ? 'philosophy or ideas'
+    : theme === 'adventure' ? 'adventure or travel'
+    : 'technology or the future';
+
+  const prompt = `You are helping a student study SAT vocabulary. Write a short reading passage (3-4 paragraphs) that naturally incorporates the following words in context. The passage should be about ${themeDesc}. Use ${diffDesc}. Make the passage engaging and coherent — the vocabulary words should feel natural, not forced.
+
+Words to include (use each at least once): ${wordList}
+
+IMPORTANT: Respond with ONLY valid JSON in this exact format, no markdown, no backticks:
+{"title":"passage title here","passage":"full passage text here with the vocabulary words used naturally","wordsUsed":["word1","word2"]}
+
+Wrap each vocabulary word in the passage with <mark> tags like: <mark>word</mark>`;
+
+  // Show loading
+  document.getElementById('reading-setup').style.display = 'none';
+  document.getElementById('reading-output').style.display = 'none';
+  document.getElementById('reading-loading').style.display = 'flex';
+  document.getElementById('reading-gen-btn').disabled = true;
+
+  // ← Replace this URL with your Cloudflare Worker URL after deploying
+  const WORKER_URL = 'https://YOUR_WORKER.YOUR_SUBDOMAIN.workers.dev';
+
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({}));
+      throw new Error(errData.error || 'API error ' + resp.status);
+    }
+    const data = await resp.json();
+    const raw = data.content.map(c => c.text || '').join('').trim()
+      .replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
+    const parsed = JSON.parse(raw);
+
+    // Render
+    if (!isUnlocked()) {
+      localStorage.setItem('sat-passages-used', String(getPassageCount() + 1));
+    }
+    document.getElementById('reading-loading').style.display = 'none';
+    document.getElementById('reading-output').style.display = 'flex';
+
+    document.getElementById('reading-title').textContent = parsed.title || 'Reading Passage';
+
+    // Style the <mark> tags nicely
+    const passageHtml = (parsed.passage || '')
+      .replace(/<mark>(.*?)<\/mark>/g, '<span class="reading-highlight" title="$1">$1</span>')
+      .replace(/\n\n/g, '</p><p style="margin:0 0 12px 0;">')
+      .replace(/\n/g, '<br>');
+    document.getElementById('reading-passage').innerHTML = '<p style="margin:0 0 12px 0;">' + passageHtml + '</p>';
+
+    // Word chips
+    const used = parsed.wordsUsed || shuffled.map(w => w.word);
+    const chipsEl = document.getElementById('reading-words-used');
+    chipsEl.innerHTML = '';
+    used.forEach(function(w) {
+      const chip = document.createElement('span');
+      chip.style.cssText = 'background:var(--surface);border:1px solid var(--accent);color:var(--accent);padding:3px 10px;border-radius:999px;font-size:0.65rem;font-family:IBM Plex Mono,monospace;';
+      chip.textContent = w;
+      chipsEl.appendChild(chip);
+    });
+
+  } catch(e) {
+    document.getElementById('reading-loading').style.display = 'none';
+    document.getElementById('reading-setup').style.display = 'block';
+    document.getElementById('reading-error').textContent = 'Failed to generate passage: ' + (e.message || e);
+    document.getElementById('reading-error').style.display = 'block';
+  }
+  document.getElementById('reading-gen-btn').disabled = false;
+}
+
 // ── TABS ──
 function switchMode(mode) {
-  // hide analytics, restore shuffle unless going to analytics
+  // hide all special views
   document.getElementById('analytics-view').style.display = 'none';
+  document.getElementById('reading-view').style.display = 'none';
   document.getElementById('shuffle-btn').style.display = '';
   document.getElementById('add-section').style.display = '';
   if (mode === 'analytics') {
@@ -1568,6 +1831,19 @@ function switchMode(mode) {
     document.getElementById('add-section').style.display = 'none';
     activeMode = 'analytics';
     renderAnalytics();
+    return;
+  }
+  if (mode === 'reading') {
+    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===4));
+    document.getElementById('flash-view').style.display = 'none';
+    document.getElementById('quiz-view').style.display = 'none';
+    document.getElementById('focus-view').style.display = 'none';
+    document.getElementById('reading-view').style.display = 'flex';
+    document.getElementById('shuffle-btn').style.display = 'none';
+    document.getElementById('add-section').style.display = 'none';
+    activeMode = 'reading';
+    updateReadingCounter();
+    checkPaywall();
     return;
   }
   document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['flash','quiz','focus'][i] === mode));
