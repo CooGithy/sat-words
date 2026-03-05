@@ -1103,13 +1103,23 @@ function switchGroup(id) {
   fcOrder = words.map((_,i)=>i); fcIdx = 0;
   ctxFlash = 'all'; ctxQuiz = 'all'; ctxFocus = 'all';
   quizPool = []; quizAsked = [];
-  hideGroupsPage();
   focusSet = []; focusQueue = []; focusMasteredSet = new Set();
+  focusSessionDone = false;
   saveGroups();
-  showCard(); renderWordList();
-  const lbl = document.getElementById("active-group-label"); if(lbl) lbl.textContent = getActiveGroup().name;
-  // show app
-  enterApp();
+  // update label immediately
+  const lbl = document.getElementById('active-group-label');
+  if (lbl) lbl.textContent = getActiveGroup().name;
+  // if coming from home page, animate it away
+  const hp = document.getElementById('home-page');
+  if (hp && hp.style.display !== 'none') {
+    hp.classList.add('hiding');
+    setTimeout(() => { hp.style.display = 'none'; }, 500);
+  }
+  // always hide groups page and refresh the app view
+  hideGroupsPage();
+  switchMode('flash');
+  showCard();
+  renderWordList();
 }
 
 function renderGroupsPage() {
