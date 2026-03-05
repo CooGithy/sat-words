@@ -1813,6 +1813,9 @@ function switchMode(mode) {
   activeMode = mode;
   refreshWordListForMode();
   updateShuffleBtn();
+  if (mode==='flash') {
+    showCard(); // restart timer on current card
+  }
   if (mode==='quiz') {
     if (document.getElementById('quiz-active').style.display === 'none' &&
         document.getElementById('quiz-results').style.display === 'none') {
