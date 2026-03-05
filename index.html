@@ -894,8 +894,8 @@ function confirmNewGroup() {
   const startWords = usingPreset ? SAT_PRESET_WORDS.map(w => ({...w})) : [];
   groups.push({ id, name, words: startWords, preset: usingPreset });
   closeNewGroupModal();
-  saveGroups(); renderGroupsPage();
-  switchGroup(id);
+  saveGroups();
+  showGroupsPage();  // stay on groups page so new group (with badge) is visible
 }
 
 let _renameTargetId = null;
@@ -949,8 +949,13 @@ function confirmDeleteGroup() {
     if (activeGroupId) { showCard(); renderWordList(); const lbl = document.getElementById('active-group-label'); if(lbl) lbl.textContent = getActiveGroup().name; }
   }
   saveGroups();
-  // stay on groups page — just re-render it
-  showGroupsPage();
+  // remove the card directly from the DOM immediately
+  const grid = document.getElementById('groups-grid');
+  const cards = grid.querySelectorAll('.group-card');
+  cards.forEach(card => {
+    // find the card whose rename/delete buttons reference this id
+    if (card.querySelector(`[onclick*="${id}"]`)) card.remove();
+  });
 }
 
 function resetPreset() {
@@ -1429,6 +1434,9 @@ function deleteWord(idx) {
   fcOrder = words.map((_,i)=>i);
   fcIdx = Math.min(fcIdx, Math.max(0, words.length-1));
   saveWords(); showCard(); renderWordList();
+  // update badge on the group card if groups page is open
+  const gp = document.getElementById('groups-page');
+  if (gp && gp.classList.contains('active')) renderGroupsPage();
   showUndoToast();
 }
 function undoDelete() {
