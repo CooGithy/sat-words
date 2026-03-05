@@ -454,8 +454,13 @@
       </div>
     </div>
 
+    <!-- ANALYTICS VIEW (left panel) -->
+    <div id="analytics-view" style="display:none;flex-direction:column;gap:14px;overflow-y:auto;max-height:calc(100vh - 120px);padding-bottom:20px;">
+      <div id="analytics-content"></div>
+    </div>
+
     <!-- ADD WORDS -->
-    <div class="add-section">
+    <div class="add-section" id="add-section">
       <div class="add-row">
         <input type="text" id="word-input" placeholder="Word" />
         <input type="text" id="def-input" placeholder="Definition" />
@@ -487,11 +492,6 @@
       <div class="word-list" id="word-list"></div>
     </div>
 
-
-    <!-- ANALYTICS PANEL -->
-    <div id="analytics-view" style="display:none;flex-direction:column;gap:18px;padding-bottom:20px;">
-      <div id="analytics-content"></div>
-    </div>
   </div><!-- end right-panel -->
 
 </div><!-- end app-layout -->
@@ -502,6 +502,24 @@
 let appStats = JSON.parse(localStorage.getItem('sat-stats') || '{"quizzesTaken":0,"bestScore":0}');
 
 function saveStats() { localStorage.setItem('sat-stats', JSON.stringify(appStats)); }
+
+
+// ── TIME TRACKING ──
+let _cardShownAt = null;
+let _trackingWord = null;
+function startWordTimer(word) {
+  _cardShownAt = Date.now();
+  _trackingWord = word;
+}
+function stopWordTimer() {
+  if (!_cardShownAt || !_trackingWord) return;
+  const secs = Math.round((Date.now() - _cardShownAt) / 1000);
+  if (secs > 0 && secs < 300) { // ignore if > 5 min (tab left open)
+    recordAnalytic(_trackingWord, 'timeSeconds', secs);
+  }
+  _cardShownAt = null;
+  _trackingWord = null;
+}
 
 // ── ANALYTICS ──
 // wordAnalytics[groupId][word] = { quizCorrect, quizWrong, focusHard, focusMid, focusEasy, flashViews }
@@ -531,117 +549,94 @@ function deleteWordAnalytic(word) {
 }
 
 function renderAnalytics() {
-  const el = document.getElementById('analytics-content');
+  var el = document.getElementById('analytics-content');
   if (!el) return;
-  const ga = getGroupAnalytics();
-  const wordList = Object.keys(ga);
+  var ga = getGroupAnalytics();
+  var wordList = Object.keys(ga);
 
   if (wordList.length === 0) {
-    el.innerHTML = '<div class="analytics-empty">No data yet.<br>Start quizzing or studying to see analytics.</div>';
+    el.innerHTML = '<div class="analytics-empty">No data yet.<br>Study, quiz, or flip cards to see analytics.</div>';
     return;
   }
 
-  // ── Summary stats ──
-  let totalQuizzes = 0, totalCorrect = 0, totalFocusSessions = 0, totalFlashViews = 0;
-  wordList.forEach(w => {
-    const d = ga[w];
-    totalCorrect += d.quizCorrect || 0;
-    totalQuizzes += (d.quizCorrect || 0) + (d.quizWrong || 0);
-    totalFocusSessions += (d.focusHard || 0) + (d.focusMid || 0) + (d.focusEasy || 0);
-    totalFlashViews += d.flashViews || 0;
+  var totalQuizAttempts = 0, totalCorrect = 0, totalFocusReps = 0, totalSecs = 0;
+  wordList.forEach(function(w) {
+    var d = ga[w];
+    totalCorrect      += d.quizCorrect  || 0;
+    totalQuizAttempts += (d.quizCorrect || 0) + (d.quizWrong || 0);
+    totalFocusReps    += (d.focusHard   || 0) + (d.focusMid  || 0) + (d.focusEasy || 0);
+    totalSecs         += d.timeSeconds  || 0;
   });
-  const overallPct = totalQuizzes > 0 ? Math.round((totalCorrect/totalQuizzes)*100) : 0;
+  var overallPct = totalQuizAttempts > 0 ? Math.round((totalCorrect / totalQuizAttempts) * 100) : 0;
+  var mins = Math.floor(totalSecs / 60), secs = totalSecs % 60;
+  var timeStr = mins > 0 ? (mins + 'm ' + secs + 's') : (secs + 's');
 
-  // ── Words needing most work (highest wrong+hard ratio) ──
-  const needWork = wordList
-    .map(w => {
-      const d = ga[w];
-      const attempts = (d.quizCorrect||0)+(d.quizWrong||0)+(d.focusHard||0)+(d.focusMid||0)+(d.focusEasy||0);
-      const struggles = (d.quizWrong||0)+(d.focusHard||0)+(d.focusMid||0)*0.5;
-      return { w, score: attempts > 0 ? struggles/attempts : 0, struggles, attempts };
-    })
-    .filter(x => x.attempts > 0)
-    .sort((a,b) => b.score - a.score)
-    .slice(0, 8);
+  function masteryScore(d) {
+    var pos = (d.quizCorrect || 0) * 2 + (d.focusEasy || 0) * 2;
+    var neg = (d.quizWrong   || 0) * 2 + (d.focusHard || 0) * 2 + (d.focusMid || 0);
+    var total = pos + neg;
+    if (total === 0) return -1;
+    var ratio = pos / total;
+    var timePenalty = Math.min((d.timeSeconds || 0) / 120, 1) * (1 - ratio) * 0.3;
+    return Math.round((ratio - timePenalty) * 100);
+  }
 
-  // ── Most studied (most total interactions) ──
-  const mostStudied = wordList
-    .map(w => {
-      const d = ga[w];
-      const total = (d.quizCorrect||0)+(d.quizWrong||0)+(d.focusHard||0)+(d.focusMid||0)+(d.focusEasy||0)+(d.flashViews||0);
-      return { w, total };
-    })
-    .filter(x => x.total > 0)
-    .sort((a,b) => b.total - a.total)
-    .slice(0, 8);
+  function fmtSecs(s) { return s >= 60 ? (Math.floor(s/60) + 'm ' + (s%60) + 's') : (s + 's'); }
 
-  // ── Best known (highest correct ratio with enough attempts) ──
-  const bestKnown = wordList
-    .map(w => {
-      const d = ga[w];
-      const attempts = (d.quizCorrect||0)+(d.quizWrong||0)+(d.focusHard||0)+(d.focusMid||0)+(d.focusEasy||0);
-      const correct = (d.quizCorrect||0)+(d.focusEasy||0);
-      return { w, pct: attempts >= 2 ? Math.round((correct/attempts)*100) : 0, attempts };
-    })
-    .filter(x => x.attempts >= 2)
-    .sort((a,b) => b.pct - a.pct)
-    .slice(0, 8);
+  var scored = wordList.map(function(w) {
+    return { w: w, score: masteryScore(ga[w]), d: ga[w] };
+  }).filter(function(x) { return x.score >= 0; });
 
-  const maxStudied = mostStudied[0]?.total || 1;
-  const maxWork = needWork[0]?.struggles || 1;
+  var needWork = scored.filter(function(x) { return x.score < 55; })
+    .sort(function(a,b) { return a.score - b.score; }).slice(0, 8);
+  var confident = scored.filter(function(x) { return x.score >= 70; })
+    .sort(function(a,b) { return b.score - a.score; }).slice(0, 8);
+  var mostTime = wordList.map(function(w) {
+    return { w: w, t: ga[w].timeSeconds || 0 };
+  }).filter(function(x) { return x.t > 0; })
+    .sort(function(a,b) { return b.t - a.t; }).slice(0, 8);
+  var maxTime = mostTime.length > 0 ? mostTime[0].t : 1;
 
-  el.innerHTML = `
-    <div class="analytics-stat-grid">
-      <div class="analytics-stat-box">
-        <div class="analytics-stat-val">${overallPct}%</div>
-        <div class="analytics-stat-lbl">Quiz Accuracy</div>
-      </div>
-      <div class="analytics-stat-box">
-        <div class="analytics-stat-val">${totalFlashViews}</div>
-        <div class="analytics-stat-lbl">Cards Viewed</div>
-      </div>
-      <div class="analytics-stat-box">
-        <div class="analytics-stat-val">${totalFocusSessions}</div>
-        <div class="analytics-stat-lbl">Focus Reps</div>
-      </div>
-    </div>
+  function barRow(w, pct, val, color) {
+    return '<div class="analytics-row">'
+      + '<div class="analytics-word">' + w + '</div>'
+      + '<div class="analytics-bar-wrap"><div class="analytics-bar" style="width:' + pct + '%;background:' + color + ';"></div></div>'
+      + '<div class="analytics-val">' + val + '</div>'
+      + '</div>';
+  }
 
-    <div class="analytics-section">
-      <div class="analytics-section-title">🔴 Needs More Work</div>
-      ${needWork.length === 0 ? '<div class="analytics-empty" style="padding:16px 0;">Nothing yet</div>' :
-        needWork.map(({w, struggles}) => `
-        <div class="analytics-row">
-          <div class="analytics-word">${w}</div>
-          <div class="analytics-bar-wrap"><div class="analytics-bar" style="width:${Math.round((struggles/maxWork)*100)}%;background:#ff5555;"></div></div>
-          <div class="analytics-val">${Math.round(struggles)}</div>
-        </div>`).join('')}
-    </div>
+  var html = '<div class="analytics-stat-grid">'
+    + '<div class="analytics-stat-box"><div class="analytics-stat-val">' + overallPct + '%</div><div class="analytics-stat-lbl">Quiz Accuracy</div></div>'
+    + '<div class="analytics-stat-box"><div class="analytics-stat-val">' + timeStr + '</div><div class="analytics-stat-lbl">Time Studying</div></div>'
+    + '<div class="analytics-stat-box"><div class="analytics-stat-val">' + totalFocusReps + '</div><div class="analytics-stat-lbl">Focus Reps</div></div>'
+    + '</div>';
 
-    <div class="analytics-section">
-      <div class="analytics-section-title">✅ Most Confident</div>
-      ${bestKnown.length === 0 ? '<div class="analytics-empty" style="padding:16px 0;">Nothing yet</div>' :
-        bestKnown.map(({w, pct}) => `
-        <div class="analytics-row">
-          <div class="analytics-word">${w}</div>
-          <div class="analytics-bar-wrap"><div class="analytics-bar" style="width:${pct}%;background:#7ecb20;"></div></div>
-          <div class="analytics-val">${pct}%</div>
-        </div>`).join('')}
-    </div>
+  html += '<div class="analytics-section"><div class="analytics-section-title">&#128308; Needs More Work</div>';
+  if (needWork.length === 0) {
+    html += '<div class="analytics-empty" style="padding:12px 0;font-size:0.75rem;">Nothing flagged yet</div>';
+  } else {
+    needWork.forEach(function(x) { html += barRow(x.w, Math.max(4, 100 - x.score), x.score + '%', '#ff5555'); });
+  }
+  html += '</div>';
 
-    <div class="analytics-section">
-      <div class="analytics-section-title">⏱ Most Time Spent</div>
-      ${mostStudied.length === 0 ? '<div class="analytics-empty" style="padding:16px 0;">Nothing yet</div>' :
-        mostStudied.map(({w, total}) => `
-        <div class="analytics-row">
-          <div class="analytics-word">${w}</div>
-          <div class="analytics-bar-wrap"><div class="analytics-bar" style="width:${Math.round((total/maxStudied)*100)}%;background:var(--accent);"></div></div>
-          <div class="analytics-val">${total}</div>
-        </div>`).join('')}
-    </div>
-  `;
+  html += '<div class="analytics-section"><div class="analytics-section-title">&#9989; Most Confident</div>';
+  if (confident.length === 0) {
+    html += '<div class="analytics-empty" style="padding:12px 0;font-size:0.75rem;">No confident words yet</div>';
+  } else {
+    confident.forEach(function(x) { html += barRow(x.w, x.score, x.score + '%', '#7ecb20'); });
+  }
+  html += '</div>';
+
+  html += '<div class="analytics-section"><div class="analytics-section-title">&#9201; Most Time Spent</div>';
+  if (mostTime.length === 0) {
+    html += '<div class="analytics-empty" style="padding:12px 0;font-size:0.75rem;">No time data yet</div>';
+  } else {
+    mostTime.forEach(function(x) { html += barRow(x.w, Math.round((x.t / maxTime) * 100), fmtSecs(x.t), 'var(--accent)'); });
+  }
+  html += '</div>';
+
+  el.innerHTML = html;
 }
-
-
 function enterApp() {
   const hp = document.getElementById('home-page');
   if (hp.style.display !== 'none') {
@@ -1167,10 +1162,14 @@ function hideGroupsPage() {
 }
 
 function showCard() {
+  stopWordTimer();
   // record flash view for current word
   if (activeMode === 'flash' && words.length > 0 && fcOrder.length > 0) {
     const wi = fcOrder[fcIdx % fcOrder.length];
-    if (words[wi]) recordAnalytic(words[wi].word, 'flashViews');
+    if (words[wi]) {
+      recordAnalytic(words[wi].word, 'flashViews');
+      startWordTimer(words[wi].word);
+    }
   }
   document.getElementById('card').classList.remove('flipped');
   if (!words.length) { document.getElementById('fc-word').textContent = 'No words yet'; document.getElementById('fc-def').textContent = 'Add some below'; document.getElementById('fc-counter').textContent = '0 / 0'; return; }
@@ -1266,7 +1265,9 @@ function nextQuestion() {
   quizAsked.push(ci);
   if (quizAsked.length >= activePool.length) quizAsked = []; // reset cycle
   quizCorrectIdx = ci;
+  stopWordTimer();
   document.getElementById('q-word').textContent = words[ci].word;
+  startWordTimer(words[ci].word);
 
   const total = quizMode === 'limited' ? quizPool.length : null;
   const label = quizMode === 'limited' ? `${quizQ+1} / ${total}` : `Q${quizQ+1}`;
@@ -1315,7 +1316,8 @@ function answerQ(btn, isCorrect, ci) {
   document.getElementById('q-next').style.display = 'inline-block';
 }
 
-function endQuiz() { if (quizQ === 0) { showQuizSetup(); return; } showResults(); }
+function endQuiz() {
+  stopWordTimer(); if (quizQ === 0) { showQuizSetup(); return; } showResults(); }
 
 function showResults() {
   document.getElementById('quiz-active').style.display = 'none';
@@ -1445,11 +1447,13 @@ function currentFocusItem() {
 }
 
 function showFocusCard() {
+  stopWordTimer();
   const next = currentFocusItem();
   if (!next) { showFocusResults(); return; }
   document.getElementById('focus-card').classList.remove('flipped');
   const w = words[next.item.wordIdx];
   document.getElementById('foc-word').textContent = w.word;
+  startWordTimer(w.word);
   document.getElementById('foc-def').textContent = w.definition;
   const remaining = focusSet.length - focusMasteredSet.size;
   document.getElementById('foc-counter').textContent = `${remaining} remaining`;
@@ -1486,6 +1490,7 @@ function rateFocus(rating) {
 }
 
 function showFocusResults() {
+  stopWordTimer();
   document.getElementById('focus-card-wrap').style.display = 'none';
   document.getElementById('focus-results').style.display = 'block';
   // keep word list showing the session words on the results screen
@@ -1552,6 +1557,7 @@ function switchMode(mode) {
   // hide analytics, restore shuffle unless going to analytics
   document.getElementById('analytics-view').style.display = 'none';
   document.getElementById('shuffle-btn').style.display = '';
+  document.getElementById('add-section').style.display = '';
   if (mode === 'analytics') {
     document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===3));
     document.getElementById('flash-view').style.display = 'none';
@@ -1559,6 +1565,7 @@ function switchMode(mode) {
     document.getElementById('focus-view').style.display = 'none';
     document.getElementById('analytics-view').style.display = 'flex';
     document.getElementById('shuffle-btn').style.display = 'none';
+    document.getElementById('add-section').style.display = 'none';
     activeMode = 'analytics';
     renderAnalytics();
     return;
