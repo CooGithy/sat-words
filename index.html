@@ -901,6 +901,13 @@ function setWordListContext(ctx) {
 }
 
 function refreshWordListForMode() {
+  if (activeMode === 'analytics') {
+    const lbl = document.getElementById('word-list-label');
+    if (lbl) lbl.firstChild.textContent = 'All Words (';
+    ctxFlash = 'all';
+    renderWordList();
+    return;
+  }
   const ctx = activeMode === 'quiz' ? ctxQuiz : activeMode === 'focus' ? ctxFocus : ctxFlash;
   const lbl = document.getElementById('word-list-label');
   if (lbl) lbl.firstChild.textContent = ctx === 'all' ? 'All Words (' : 'In Session (';
@@ -928,6 +935,25 @@ function migrateData() {
     if (!('preset' in grp)) { grp.preset = false; changed = true; }
     if (!Array.isArray(grp.words)) { grp.words = []; changed = true; }
   });
+
+  // Deduplicate groups by name — keep the one with more words (or the preset id one)
+  const seen = {};
+  const deduped = [];
+  g.forEach(grp => {
+    const key = grp.name.trim().toLowerCase();
+    if (seen[key] !== undefined) {
+      // keep whichever has more words, or prefer SAT_PRESET_ID
+      const existing = deduped[seen[key]];
+      if (grp.id === SAT_PRESET_ID || grp.words.length > existing.words.length) {
+        deduped[seen[key]] = grp;
+      }
+      changed = true;
+    } else {
+      seen[key] = deduped.length;
+      deduped.push(grp);
+    }
+  });
+  if (deduped.length !== g.length) { g = deduped; changed = true; }
 
   if (changed) localStorage.setItem('sat-groups', JSON.stringify(g));
 }
@@ -1569,6 +1595,7 @@ function switchMode(mode) {
     document.getElementById('add-section').style.display = 'none';
     activeMode = 'analytics';
     renderAnalytics();
+    refreshWordListForMode();
     return;
   }
   document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['flash','quiz','focus'][i] === mode));
