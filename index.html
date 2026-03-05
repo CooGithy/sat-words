@@ -1103,6 +1103,7 @@ function switchGroup(id) {
   fcOrder = words.map((_,i)=>i); fcIdx = 0;
   ctxFlash = 'all'; ctxQuiz = 'all'; ctxFocus = 'all';
   quizPool = []; quizAsked = [];
+  hideGroupsPage();
   focusSet = []; focusQueue = []; focusMasteredSet = new Set();
   saveGroups();
   showCard(); renderWordList();
@@ -1702,11 +1703,6 @@ function applyFontTheme(name) {
   if (ft) {
     document.documentElement.style.setProperty('--font-display', "'" + ft.display + "', serif");
     document.documentElement.style.setProperty('--font-mono', "'" + ft.mono + "', monospace");
-    theme.bg      = hexToHsl(ft.bg);
-    theme.surface = hexToHsl(ft.surface);
-    theme.accent  = hexToHsl(ft.accent);
-    theme.text    = hexToHsl(ft.text);
-    applyTheme();
     activeFontTheme = name;
     localStorage.setItem('sat-font-theme', name);
   } else {
