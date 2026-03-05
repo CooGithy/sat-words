@@ -38,6 +38,7 @@
   .card-wrap { perspective: 1000px; width: 100%; height: 280px; cursor: pointer; }
 
   /* SETTINGS */
+  .sat-wordmark { position: fixed; top: 14px; left: 18px; z-index: 600; font-size: 1.05rem; font-weight: 900; letter-spacing: 2px; font-family: 'Arial Black', Arial, sans-serif; color: #fff; pointer-events: none; line-height: 1; }
   .settings-btn { position: fixed; top: 16px; right: 16px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); width: 36px; height: 36px; border-radius: 50%; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 600; transition: border-color 0.15s, color 0.15s; }
   .settings-btn:hover { border-color: var(--accent); color: var(--accent); }
   .settings-btn::after { content: 'Settings'; position: absolute; top: 52px; right: 0; background: #000c; color: #fff; font-size: 0.6rem; font-family: var(--font-mono); padding: 4px 9px; border-radius: 6px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.15s; letter-spacing: 0.5px; }
@@ -302,6 +303,7 @@
   <div class="home-inner">
 
     <div class="home-hero">
+
       <div class="home-title">SAT <span>Words</span></div>
       <div class="home-tagline">A smarter way to study vocabulary.<br>Flashcards, quizzes, and spaced repetition — all in one place.</div>
     </div>
@@ -343,6 +345,8 @@
 
 
 <button class="settings-btn" onclick="toggleSettings()">⚙</button>
+<div class="sat-wordmark" id="sat-wordmark">SAT</div>
+
 
 <div class="settings-panel" id="settings-panel">
   <hr class="divider">
@@ -359,7 +363,7 @@
   <div class="s-title">Background</div>
   <div class="bg-preset-grid" id="bg-preset-grid"></div>
   <hr class="divider">
-  <div class="s-title">Font & Style</div>
+  <div class="s-title">Fonts</div>
   <div class="font-theme-grid" id="font-theme-grid"></div>
   <hr class="divider">
   <div class="s-title" style="color:#ff5555;">Danger Zone</div>
@@ -836,6 +840,21 @@ function applyTheme() {
     }
   });
   localStorage.setItem('sat-theme2', JSON.stringify(theme));
+  // update wordmark color based on bg luminance
+  updateWordmarkColor();
+}
+
+function updateWordmarkColor() {
+  const el = document.getElementById('sat-wordmark');
+  if (!el) return;
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  // parse hex to get luminance
+  const hex = bg.replace('#','');
+  const r = parseInt(hex.slice(0,2),16)/255;
+  const g = parseInt(hex.slice(2,4),16)/255;
+  const b = parseInt(hex.slice(4,6),16)/255;
+  const lum = 0.2126*r + 0.7152*g + 0.0722*b;
+  el.style.color = lum > 0.4 ? '#000' : '#fff';
 }
 
 function confirmResetAllData() {
@@ -2026,6 +2045,7 @@ buildColorZones();
 applyTheme();
 buildBgPresetUI();
 buildFontThemeUI();
+updateWordmarkColor();
 applyGradient();
 showCard();
 renderWordList();
