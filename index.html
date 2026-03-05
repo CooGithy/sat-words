@@ -757,6 +757,28 @@ function refreshWordListForMode() {
 const SAT_PRESET_ID = 'sat-preset-1000';
 let SAT_PRESET_WORDS = [];
 
+// ── MIGRATION (never wipes data, just patches missing fields) ──
+function migrateData() {
+  let g = JSON.parse(localStorage.getItem('sat-groups') || 'null');
+  if (!g) return; // nothing saved yet, nothing to migrate
+
+  let changed = false;
+
+  // Remove stale gradient keys that are no longer used
+  ['sat-grad','sat-grad-on'].forEach(k => {
+    if (localStorage.getItem(k) !== null) { localStorage.removeItem(k); changed = true; }
+  });
+
+  // Ensure every group has the fields the current code expects
+  g.forEach(grp => {
+    if (!('preset' in grp)) { grp.preset = false; changed = true; }
+    if (!Array.isArray(grp.words)) { grp.words = []; changed = true; }
+  });
+
+  if (changed) localStorage.setItem('sat-groups', JSON.stringify(g));
+}
+migrateData();
+
 let groups = JSON.parse(localStorage.getItem('sat-groups') || 'null');
 if (!groups) {
   const existing = JSON.parse(localStorage.getItem('sat-words') || '[]');
