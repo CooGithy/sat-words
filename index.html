@@ -527,18 +527,27 @@ function saveStats() { localStorage.setItem('sat-stats', JSON.stringify(appStats
 // ── TIME TRACKING ──
 let _cardShownAt = null;
 let _trackingWord = null;
+let _trackingGroupId = null; // snapshot of group at timer start
 function startWordTimer(word) {
   _cardShownAt = Date.now();
   _trackingWord = word;
+  _trackingGroupId = activeGroupId; // lock in which group this belongs to
 }
 function stopWordTimer() {
   if (!_cardShownAt || !_trackingWord) return;
   const secs = Math.round((Date.now() - _cardShownAt) / 1000);
-  if (secs > 0 && secs < 300) { // ignore if > 5 min (tab left open)
-    recordAnalytic(_trackingWord, 'timeSeconds', secs);
+  if (secs > 0 && secs < 300) {
+    // write to the group that was active when the card was shown, not the current one
+    const data = getWordAnalytics();
+    const gid = _trackingGroupId || activeGroupId;
+    if (!data[gid]) data[gid] = {};
+    if (!data[gid][_trackingWord]) data[gid][_trackingWord] = { quizCorrect:0, quizWrong:0, focusHard:0, focusMid:0, focusEasy:0, flashViews:0 };
+    data[gid][_trackingWord]['timeSeconds'] = (data[gid][_trackingWord]['timeSeconds'] || 0) + secs;
+    saveWordAnalytics(data);
   }
   _cardShownAt = null;
   _trackingWord = null;
+  _trackingGroupId = null;
 }
 
 // ── ANALYTICS ──
@@ -553,11 +562,14 @@ function getGroupAnalytics() {
   const data = getWordAnalytics();
   return data[activeGroupId] || {};
 }
+let _sessionGroupId = null; // locked when a study session starts
+
 function recordAnalytic(word, field, amount=1) {
   const data = getWordAnalytics();
-  if (!data[activeGroupId]) data[activeGroupId] = {};
-  if (!data[activeGroupId][word]) data[activeGroupId][word] = { quizCorrect:0, quizWrong:0, focusHard:0, focusMid:0, focusEasy:0, flashViews:0 };
-  data[activeGroupId][word][field] = (data[activeGroupId][word][field] || 0) + amount;
+  const gid = _sessionGroupId || activeGroupId;
+  if (!data[gid]) data[gid] = {};
+  if (!data[gid][word]) data[gid][word] = { quizCorrect:0, quizWrong:0, focusHard:0, focusMid:0, focusEasy:0, flashViews:0 };
+  data[gid][word][field] = (data[gid][word][field] || 0) + amount;
   saveWordAnalytics(data);
 }
 function deleteWordAnalytic(word) {
@@ -1105,6 +1117,7 @@ function switchGroup(id) {
   quizPool = []; quizAsked = [];
   focusSet = []; focusQueue = []; focusMasteredSet = new Set();
   focusSessionDone = false;
+  _sessionGroupId = null;
   saveGroups();
   // update label immediately
   const lbl = document.getElementById('active-group-label');
@@ -1299,6 +1312,7 @@ function hideGroupsPage() {
 
 function showCard() {
   stopWordTimer();
+  _sessionGroupId = activeGroupId;
   // record flash view for current word
   if (activeMode === 'flash' && words.length > 0 && fcOrder.length > 0) {
     const wi = fcOrder[fcIdx % fcOrder.length];
@@ -1369,6 +1383,7 @@ function selectQuizMode(m) {
 }
 
 function startQuiz() {
+  _sessionGroupId = activeGroupId;
   if (words.length < 2) { alert('Add at least 2 words first.'); return; }
   if (quizMode === 'limited') {
     const v = parseInt(document.getElementById('quiz-limit').value);
@@ -1556,6 +1571,7 @@ function studyWrong() {
 }
 
 function startFocus() {
+  _sessionGroupId = activeGroupId;
   const raw = parseInt(document.getElementById('focus-count').value);
   const count = isNaN(raw) ? 10 : Math.max(2, Math.min(raw, words.length));
   if (words.length < 2) { alert('Add at least 2 words first.'); return; }
