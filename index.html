@@ -797,6 +797,10 @@ function applyTheme() {
   localStorage.setItem('sat-theme2', JSON.stringify(theme));
 }
 
+function toggleSettings() {
+  document.getElementById('settings-panel').classList.toggle('open');
+}
+
 function buildColorZones() {
   const container = document.getElementById('color-zones');
   zoneConfig.forEach(z => {
