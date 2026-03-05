@@ -204,18 +204,18 @@
   .rating-easy:hover { background: #7ecb20; color: #000; }
   /* ANALYTICS */
   .analytics-section { margin-bottom: 10px; }
-  .analytics-section-title { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; }
+  .analytics-section-title { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; opacity: 0.9; }
   .analytics-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
   .analytics-row:last-child { border-bottom: none; }
   .analytics-word { font-family: var(--font-display); font-size: 0.88rem; color: var(--text); min-width: 130px; flex-shrink: 0; font-weight: normal; background: none; border: none; padding: 0; cursor: default; }
-  .analytics-bar-wrap { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .analytics-bar-wrap { flex: 1; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
   .analytics-bar { height: 100%; border-radius: 3px; transition: width 0.4s; }
   .analytics-val { font-size: 0.68rem; color: var(--muted); font-family: var(--font-mono); min-width: 32px; text-align: right; }
   .analytics-badge { font-size: 0.6rem; padding: 2px 8px; border-radius: 999px; font-family: var(--font-mono); }
   .analytics-empty { font-size: 0.78rem; color: var(--muted); text-align: center; padding: 40px 0; }
   .analytics-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 4px; }
   .analytics-stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
-  .analytics-stat-val { font-family: var(--font-display); font-size: 1.4rem; color: var(--accent); }
+  .analytics-stat-val { font-family: var(--font-display); font-size: 1.4rem; color: var(--text); }
   .analytics-stat-lbl { font-size: 0.58rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 3px; }
 
   /* FONT THEMES */
@@ -651,7 +651,7 @@ function renderAnalytics() {
   if (mostTime.length === 0) {
     html += '<div class="analytics-empty" style="padding:12px 0;font-size:0.75rem;">No time data yet</div>';
   } else {
-    mostTime.forEach(function(x) { html += barRow(x.w, Math.round((x.t / maxTime) * 100), fmtSecs(x.t), 'var(--accent)'); });
+    mostTime.forEach(function(x) { html += barRow(x.w, Math.round((x.t / maxTime) * 100), fmtSecs(x.t), '#7ab3d4'); });
   }
   html += '</div>';
 
