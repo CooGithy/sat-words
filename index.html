@@ -962,12 +962,16 @@ migrateData();
 
 let groups = JSON.parse(localStorage.getItem('sat-groups') || 'null');
 if (!groups) {
-  const existing = JSON.parse(localStorage.getItem('sat-words') || '[]');
-  groups = [{ id: 'default', name: 'All Words', words: existing }];
+  groups = [];
   localStorage.setItem('sat-groups', JSON.stringify(groups));
 }
-let activeGroupId = localStorage.getItem('sat-active-group') || 'default';
-if (!groups.find(g => g.id === activeGroupId)) activeGroupId = groups[0].id;
+// Remove the old empty default "All Words" group if it has no words and isn't actively used
+groups = groups.filter(g => !(g.id === 'default' && g.name === 'All Words' && g.words.length === 0));
+localStorage.setItem('sat-groups', JSON.stringify(groups));
+let activeGroupId = localStorage.getItem('sat-active-group') || null;
+if (!activeGroupId || !groups.find(g => g.id === activeGroupId)) {
+  activeGroupId = groups.length ? groups[0].id : null;
+}
 
 // Load SAT preset from external file in the background
 fetch('sat-words.json')
