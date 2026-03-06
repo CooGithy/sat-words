@@ -35,6 +35,9 @@
   .right-panel { padding: 40px 36px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
 
   /* LEFT: card fills width */
+  .fc-progress-wrap { width: 100%; height: 10px; background: rgba(255,255,255,0.12); border-radius: 999px; overflow: hidden; }
+  .fc-progress-bar { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s ease; width: 0%; }
+  .fc-progress-label { font-family: var(--font-mono); font-size: 0.6rem; color: var(--muted); text-align: right; margin-bottom: 6px; }
   .card-wrap { perspective: 1000px; width: 100%; height: 280px; cursor: pointer; }
 
   /* SETTINGS */
@@ -185,7 +188,18 @@
   .word-list-section { width: 100%; }
   .word-list-toggle { background: none; border: none; color: var(--muted); font-family: var(--font-mono); font-size: 0.75rem; cursor: pointer; transition: color 0.15s; margin-bottom: 10px; display: block; }
   .word-list-toggle:hover { color: var(--text); }
-  .word-list { display: flex; flex-direction: column; gap: 6px; max-height: calc(100vh - 340px); overflow-y: auto; }
+  .word-list { display: flex; flex-direction: column; gap: 6px; max-height: calc(100vh - 360px); overflow-y: auto; }
+  .word-list-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .word-list-lbl { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .bm-filter-btn { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 3px 9px; font-size: 0.65rem; font-family: var(--font-mono); color: var(--muted); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 5px; }
+  .bm-filter-btn:hover, .bm-filter-btn.active { border-color: var(--accent); color: var(--accent); }
+  .bm-icon { background: none; border: none; cursor: pointer; font-size: 0.9rem; padding: 0 4px; line-height: 1; opacity: 0.3; transition: opacity 0.15s; color: var(--accent); flex-shrink: 0; }
+  .bm-icon:hover { opacity: 0.7; }
+  .bm-icon.active { opacity: 1; }
+  .source-row { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .source-btn { background: none; border: 1px solid var(--border); border-radius: 999px; padding: 5px 14px; font-family: var(--font-mono); font-size: 0.68rem; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .source-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .source-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
 
   .word-item { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; gap: 10px; }
   .word-item-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
@@ -402,6 +416,10 @@
 
     <!-- FLASHCARD -->
     <div id="flash-view" style="display:flex;flex-direction:column;gap:16px;">
+      <div>
+        <div class="fc-progress-label" id="fc-progress-label">0%</div>
+        <div class="fc-progress-wrap"><div class="fc-progress-bar" id="fc-progress-bar"></div></div>
+      </div>
       <div class="card-wrap" onclick="flipCard()">
         <div class="card" id="card">
           <div class="card-face card-front"><div class="card-word" id="fc-word">—</div><div class="card-hint">click to reveal</div></div>
@@ -419,6 +437,10 @@
     <div id="quiz-view" style="display:none;">
       <div id="quiz-setup" class="quiz-setup">
         <div class="quiz-setup-title">Quiz</div>
+        <div class="source-row" id="quiz-source-row">
+          <button class="source-btn active" id="qsrc-all" onclick="selectQuizSource('all')">All words</button>
+          <button class="source-btn" id="qsrc-bookmarked" onclick="selectQuizSource('bookmarked')">⊙ Bookmarked</button>
+        </div>
         <p>Choose infinite mode or set a word limit.</p>
         <div class="quiz-mode-row">
           <button class="mode-btn active" id="mode-infinite" onclick="selectQuizMode('infinite')">∞ Infinite</button>
@@ -464,6 +486,10 @@
     <div id="focus-view" style="display:none;">
       <div id="focus-setup" class="focus-setup">
         <div class="focus-label">Focused Study</div>
+        <div class="source-row" id="focus-source-row">
+          <button class="source-btn active" id="fsrc-all" onclick="selectFocusSource('all')">All words</button>
+          <button class="source-btn" id="fsrc-bookmarked" onclick="selectFocusSource('bookmarked')">⊙ Bookmarked</button>
+        </div>
         <p id="focus-setup-msg">Pick a number of words to study.<br>A random set will be pulled from your list.</p>
         <div class="focus-input-row" id="focus-input-row">
           <input id="focus-count" type="number" min="2" placeholder="10" />
@@ -536,7 +562,10 @@
 
     <!-- WORD LIST always visible -->
     <div class="word-list-section">
-      <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;" id="word-list-label">All Words (<span id="word-count">0</span>)</div>
+      <div class="word-list-header">
+        <div class="word-list-lbl" id="word-list-label">All Words (<span id="word-count">0</span>)</div>
+        <button class="bm-filter-btn" id="bm-filter-btn" onclick="toggleBookmarkFilter()">⊙ Bookmarked (<span id="bm-count">0</span>)</button>
+      </div>
       <div class="word-list" id="word-list"></div>
     </div>
 
@@ -889,16 +918,22 @@ function closeResetAllModal() {
 }
 function doResetAllData() {
   const keys = ['sat-groups','sat-active-group','sat-words','sat-theme2','sat-bg-preset',
-                 'sat-stats','sat-word-analytics','sat-passages-used','sat-reading-unlocked',
-                 'sat-grad','sat-grad-on','sat-app-version','sat-font-theme',
-                 'sat-custom-display-font','sat-custom-mono-font'];
+                'sat-stats','sat-word-analytics','sat-passages-used','sat-reading-unlocked',
+                'sat-grad','sat-grad-on','sat-app-version','sat-font-theme',
+                'sat-custom-display-font','sat-custom-mono-font','sat-fc-idx','sat-bookmarks'];
   keys.forEach(k => localStorage.removeItem(k));
   closeResetAllModal();
+  // Reset progress bar immediately
+  const _pb = document.getElementById('fc-progress-bar');
+  const _pl = document.getElementById('fc-progress-label');
+  if (_pb) _pb.style.width = '0%';
+  if (_pl) _pl.textContent = '0%';
   // Re-init state
   groups = [];
   activeGroupId = null;
   words = [];
   fcOrder = []; fcIdx = 0;
+  _fcIdxByGroup = {};
   // Reset theme
   theme = buildDefaultTheme();
   activeBgPreset = null;
@@ -1152,7 +1187,16 @@ function saveGroups() { localStorage.setItem('sat-groups', JSON.stringify(groups
 
 // ── WORDS (always from active group) ──
 let words = getActiveGroup().words;
-let fcOrder = words.map((_,i)=>i), fcIdx = 0;
+let fcOrder = words.map((_,i)=>i);
+let _fcIdxByGroup = JSON.parse(localStorage.getItem('sat-fc-idx') || '{}');
+let fcIdx = _fcIdxByGroup[activeGroupId] || 0;
+if (fcIdx >= fcOrder.length) fcIdx = 0;
+
+function saveFcIdx() {
+  if (!activeGroupId) return;
+  _fcIdxByGroup[activeGroupId] = fcIdx;
+  localStorage.setItem('sat-fc-idx', JSON.stringify(_fcIdxByGroup));
+}
 
 function saveWords() {
   const g = getActiveGroup();
@@ -1165,13 +1209,22 @@ function saveWords() {
 function switchGroup(id) {
   activeGroupId = id;
   words = getActiveGroup().words;
-  fcOrder = words.map((_,i)=>i); fcIdx = 0;
+  fcOrder = words.map((_,i)=>i);
+  fcIdx = Math.min(_fcIdxByGroup[id] || 0, Math.max(0, words.length - 1));
   ctxFlash = 'all'; ctxQuiz = 'all'; ctxFocus = 'all';
   quizPool = []; quizAsked = [];
   focusSet = []; focusQueue = []; focusMasteredSet = new Set();
   focusSessionDone = false;
   _sessionGroupId = null;
+  _bmFilterActive = false;
+  _quizSource = 'all'; _focusSource = 'all';
+  const _bmfb = document.getElementById('bm-filter-btn'); if(_bmfb) _bmfb.classList.remove('active');
   saveGroups();
+  // reset progress bar immediately for the new group
+  const _pb2 = document.getElementById('fc-progress-bar');
+  const _pl2 = document.getElementById('fc-progress-label');
+  if (_pb2) _pb2.style.width = '0%';
+  if (_pl2) _pl2.textContent = '0%';
   // update label immediately
   const _wm = document.getElementById('sat-wordmark'); if (_wm) _wm.style.display = 'none';
   const lbl = document.getElementById('active-group-label');
@@ -1381,19 +1434,41 @@ function showCard() {
     }
   }
   document.getElementById('card').classList.remove('flipped');
-  if (!words.length) { document.getElementById('fc-word').textContent = 'No words yet'; document.getElementById('fc-def').textContent = 'Add some below'; document.getElementById('fc-counter').textContent = '0 / 0'; return; }
+  if (!words.length) {
+    document.getElementById('fc-word').textContent = 'No words yet';
+    document.getElementById('fc-def').textContent = 'Add some below';
+    document.getElementById('fc-counter').textContent = '0 / 0';
+    const _pb = document.getElementById('fc-progress-bar');
+    const _pl = document.getElementById('fc-progress-label');
+    if (_pb) _pb.style.width = '0%';
+    if (_pl) _pl.textContent = '0%';
+    return;
+  }
   const w = words[fcOrder[fcIdx]];
   document.getElementById('fc-word').textContent = w.word;
   document.getElementById('fc-def').textContent = w.definition;
   document.getElementById('fc-counter').textContent = `${fcIdx+1} / ${fcOrder.length}`;
+  // update progress bar
+  const pbar = document.getElementById('fc-progress-bar');
+  const plbl = document.getElementById('fc-progress-label');
+  if (pbar && plbl) {
+    if (fcOrder.length > 0 && words.length > 0) {
+      const pct = Math.round(((fcIdx + 1) / fcOrder.length) * 100);
+      pbar.style.width = pct + '%';
+      plbl.textContent = pct + '%';
+    } else {
+      pbar.style.width = '0%';
+      plbl.textContent = '0%';
+    }
+  }
 }
 
 function flipCard() { document.getElementById('card').classList.toggle('flipped'); }
-function nextCard() { if (!words.length) return; fcIdx = (fcIdx+1)%fcOrder.length; showCard(); }
-function prevCard() { if (!words.length) return; fcIdx = (fcIdx-1+fcOrder.length)%fcOrder.length; showCard(); }
+function nextCard() { if (!words.length) return; fcIdx = (fcIdx+1)%fcOrder.length; saveFcIdx(); showCard(); }
+function prevCard() { if (!words.length) return; fcIdx = (fcIdx-1+fcOrder.length)%fcOrder.length; saveFcIdx(); showCard(); }
 function shuffleFlash() {
   for (let i=fcOrder.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [fcOrder[i],fcOrder[j]]=[fcOrder[j],fcOrder[i]]; }
-  fcIdx=0; showCard();
+  fcIdx=0; saveFcIdx(); showCard();
 }
 
 function shuffleFocus() {
@@ -1450,11 +1525,17 @@ function startQuiz() {
     quizLimit = Math.min(v, words.length);
   }
   quizQ = 0; quizCorrect = 0; quizCorrectWords = []; quizWrongWords = []; quizAsked = [];
-  // build quiz pool
-  const allIdx = words.map((_,i)=>i);
-  for(let i=allIdx.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[allIdx[i],allIdx[j]]=[allIdx[j],allIdx[i]];}
-  quizPool = quizMode === 'limited' ? allIdx.slice(0, quizLimit) : allIdx;
-  setWordListContext(quizMode === 'limited' ? [...quizPool] : 'all');
+  // build quiz pool — filter by source
+  const bm_q = getBookmarks();
+  let baseIdx = words.map((_,i)=>i);
+  if (_quizSource === 'bookmarked') {
+    baseIdx = baseIdx.filter(i => bm_q[words[i].word]);
+    if (baseIdx.length < 2) { alert('You need at least 2 bookmarked words to quiz.'); return; }
+  }
+  for(let i=baseIdx.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[baseIdx[i],baseIdx[j]]=[baseIdx[j],baseIdx[i]];}
+  if (quizMode === 'limited') quizLimit = Math.min(quizLimit, baseIdx.length);
+  quizPool = quizMode === 'limited' ? baseIdx.slice(0, quizLimit) : baseIdx;
+  setWordListContext(quizMode === 'limited' ? [...quizPool] : (_quizSource === 'bookmarked' ? [...baseIdx] : 'all'));
   document.getElementById('quiz-setup').style.display = 'none';
   document.getElementById('quiz-results').style.display = 'none';
   document.getElementById('quiz-active').style.display = 'block';
@@ -1632,10 +1713,16 @@ function startFocus() {
   const raw = parseInt(document.getElementById('focus-count').value);
   const count = isNaN(raw) ? 10 : Math.max(2, Math.min(raw, words.length));
   if (words.length < 2) { alert('Add at least 2 words first.'); return; }
-  const s = words.map((_,i)=>i);
-  for (let i=s.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [s[i],s[j]]=[s[j],s[i]]; }
+  const bm_f = getBookmarks();
+  let baseF = words.map((_,i)=>i);
+  if (_focusSource === 'bookmarked') {
+    baseF = baseF.filter(i => bm_f[words[i].word]);
+    if (baseF.length < 2) { alert('You need at least 2 bookmarked words to study.'); return; }
+  }
+  for (let i=baseF.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [baseF[i],baseF[j]]=[baseF[j],baseF[i]]; }
+  const count_clamped = Math.min(count, baseF.length);
   focusSessionDone = false;
-  focusSet = s.slice(0, count);
+  focusSet = baseF.slice(0, count_clamped);
   // build initial queue
   focusQueue = focusSet.map(wi => ({ wordIdx: wi, due: 0 }));
   focusAttempt = 0;
@@ -1824,10 +1911,15 @@ function buildFontThemeUI() {
   });
 }
 
-// restore font theme on load
+// restore font theme on load (preset first, then custom override)
 (function() {
-  const saved = localStorage.getItem('sat-font-theme');
-  if (saved) applyFontTheme(saved);
+  const savedTheme = localStorage.getItem('sat-font-theme');
+  if (savedTheme) applyFontTheme(savedTheme);
+  // custom fonts override preset — restore after
+  const savedDisplay = localStorage.getItem('sat-custom-display-font');
+  const savedMono    = localStorage.getItem('sat-custom-mono-font');
+  if (savedDisplay) loadAndApplyCustomFont(savedDisplay, 'display', false);
+  if (savedMono)    loadAndApplyCustomFont(savedMono, 'mono', false);
 })();
 
 
@@ -1836,11 +1928,7 @@ let _fontTarget = 'display'; // 'display' or 'mono'
 let _customDisplayFont = localStorage.getItem('sat-custom-display-font') || null;
 let _customMonoFont = localStorage.getItem('sat-custom-mono-font') || null;
 
-// restore custom fonts on load
-(function() {
-  if (_customDisplayFont) loadAndApplyCustomFont(_customDisplayFont, 'display', false);
-  if (_customMonoFont)    loadAndApplyCustomFont(_customMonoFont, 'mono', false);
-})();
+
 
 function setFontTarget(target) {
   _fontTarget = target;
@@ -1918,15 +2006,47 @@ async function searchFonts() {
       const item = document.createElement('div');
       item.className = 'font-result-item' + (fontName === current ? ' active' : '');
       item.dataset.font = fontName;
-      const sublabel = isExact ? 'Try this font' : 'Click to apply';
+      const sublabel = isExact ? 'Try this font →' : 'Click to apply';
       item.innerHTML = '<span class="font-result-name" style="font-family:&quot;' + fontName + '&quot;,serif;">' + fontName + '</span>'
-        + '<span class="font-result-apply">' + sublabel + '</span>';
-      item.onclick = () => applyCustomFont(fontName);
+        + '<span class="font-result-apply" id="apply-lbl-' + i + '">' + sublabel + '</span>';
+      item.onclick = () => applyCustomFontWithCheck(fontName, item);
       results.appendChild(item);
     });
   } catch(e) {
     results.innerHTML = '<div class="font-search-status">Search failed. Check your connection.</div>';
   }
+}
+
+async function applyCustomFontWithCheck(fontName, itemEl) {
+  const lbl = itemEl.querySelector('.font-result-apply');
+  if (lbl) { lbl.textContent = 'Checking...'; lbl.style.color = ''; }
+
+  // Load the Google Fonts stylesheet
+  const linkId = 'gf-' + fontName.replace(/\s+/g, '-');
+  let link = document.getElementById(linkId);
+  if (!link) {
+    link = document.createElement('link');
+    link.id = linkId;
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(fontName) + ':wght@400;700&display=swap';
+    document.head.appendChild(link);
+  }
+
+  // Wait for stylesheet to load, then check if the font face actually exists
+  await new Promise(res => setTimeout(res, 800)); // give browser time to parse
+  const loaded = document.fonts.check('16px "' + fontName + '"');
+
+  if (!loaded) {
+    // Remove the failed link tag so it doesn't clutter
+    link.remove();
+    if (lbl) { lbl.textContent = '✕ Font not found'; lbl.style.color = '#ff5555'; }
+    setTimeout(() => { if (lbl) { lbl.textContent = 'Try this font →'; lbl.style.color = ''; } }, 2000);
+    return; // do NOT apply
+  }
+
+  applyCustomFont(fontName);
+  if (lbl) { lbl.textContent = '✓ Applied'; lbl.style.color = 'var(--accent)'; }
+  setTimeout(() => { if (lbl) { lbl.textContent = 'Click to apply'; lbl.style.color = ''; } }, 1500);
 }
 
 function applyCustomFont(fontName) {
@@ -1967,10 +2087,74 @@ function clearCustomFonts() {
   _customMonoFont = null;
   localStorage.removeItem('sat-custom-display-font');
   localStorage.removeItem('sat-custom-mono-font');
-  document.documentElement.style.setProperty('--font-display', "'Playfair Display', serif");
-  document.documentElement.style.setProperty('--font-mono', "'IBM Plex Mono', monospace");
+  // restore to active preset theme fonts, or default if none
+  const ft = activeFontTheme ? fontThemes.find(f => f.name === activeFontTheme) : null;
+  document.documentElement.style.setProperty('--font-display', ft ? ("'" + ft.display + "', serif") : "'Playfair Display', serif");
+  document.documentElement.style.setProperty('--font-mono', ft ? ("'" + ft.mono + "', monospace") : "'IBM Plex Mono', monospace");
   document.querySelectorAll('.font-result-item').forEach(i => i.classList.remove('active'));
 }
+
+
+// ── BOOKMARKS ──
+function getBookmarks() {
+  const all = JSON.parse(localStorage.getItem('sat-bookmarks') || '{}');
+  return all[activeGroupId] || {};
+}
+function saveBookmarks(bm) {
+  const all = JSON.parse(localStorage.getItem('sat-bookmarks') || '{}');
+  all[activeGroupId] = bm;
+  localStorage.setItem('sat-bookmarks', JSON.stringify(all));
+}
+function toggleBookmark(wordName) {
+  const bm = getBookmarks();
+  if (bm[wordName]) delete bm[wordName];
+  else bm[wordName] = 1;
+  saveBookmarks(bm);
+  renderWordList();
+  updateBookmarkCount();
+}
+function updateBookmarkCount() {
+  const bm = getBookmarks();
+  const ct = Object.keys(bm).length;
+  const el = document.getElementById('bm-count');
+  if (el) el.textContent = ct;
+}
+
+let _bmFilterActive = false;
+function toggleBookmarkFilter() {
+  _bmFilterActive = !_bmFilterActive;
+  const btn = document.getElementById('bm-filter-btn');
+  if (btn) btn.classList.toggle('active', _bmFilterActive);
+  renderWordList();
+}
+
+// Quiz/Focus source: 'all' or 'bookmarked'
+let _quizSource  = 'all';
+let _focusSource = 'all';
+function selectQuizSource(src) {
+  _quizSource = src;
+  document.getElementById('qsrc-all').classList.toggle('active', src === 'all');
+  document.getElementById('qsrc-bookmarked').classList.toggle('active', src === 'bookmarked');
+}
+function selectFocusSource(src) {
+  _focusSource = src;
+  document.getElementById('fsrc-all').classList.toggle('active', src === 'all');
+  document.getElementById('fsrc-bookmarked').classList.toggle('active', src === 'bookmarked');
+  const msg = document.getElementById('focus-setup-msg');
+  if (msg) msg.innerHTML = src === 'bookmarked'
+    ? 'Pick a number of bookmarked words to study.<br>Bookmarked words will be pulled randomly.'
+    : 'Pick a number of words to study.<br>A random set will be pulled from your list.';
+}
+// ── KEYBOARD NAVIGATION ──
+document.addEventListener('keydown', function(e) {
+  // only when flash mode is active and not typing in an input
+  if (activeMode !== 'flash') return;
+  const tag = document.activeElement && document.activeElement.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); nextCard(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prevCard(); }
+  else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flipCard(); }
+});
 
 // ── TABS ──
 function switchMode(mode) {
@@ -2018,6 +2202,16 @@ function switchMode(mode) {
   }
 }
 
+
+// ── ARROW KEY NAVIGATION ──
+document.addEventListener('keydown', function(e) {
+  if (activeMode !== 'flash') return;
+  // ignore if user is typing in an input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'ArrowRight') { e.preventDefault(); nextCard(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); prevCard(); }
+  else if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); flipCard(); }
+});
 // ── ADD WORDS ──
 function addWord() {
   const w = document.getElementById('word-input').value.trim();
@@ -2142,16 +2336,21 @@ function renderWordList() {
   const count = document.getElementById('word-count');
   if (!list) return;
   list.innerHTML = '';
+  const bm = getBookmarks();
   const ctx = activeMode === 'quiz' ? ctxQuiz : activeMode === 'focus' ? ctxFocus : ctxFlash;
   const isAll = ctx === 'all';
-  const indices = isAll ? words.map((_,i)=>i) : ctx;
+  let indices = isAll ? words.map((_,i)=>i) : ctx;
+  // apply bookmark filter
+  if (_bmFilterActive) indices = indices.filter(i => words[i] && bm[words[i].word]);
   if (count) count.textContent = indices.length;
+  updateBookmarkCount();
   indices.forEach((wordIdx, posInContext) => {
     const w = words[wordIdx];
     if (!w) return;
+    const isBookmarked = !!bm[w.word];
     const item = document.createElement('div');
     item.className = 'word-item';
-    const btnHtml = isAll
+    const delBtn = isAll
       ? `<button class="word-del-btn" onclick="deleteWord(${wordIdx})" title="Delete permanently">✕</button>`
       : `<button class="word-del-btn" onclick="removeFromSet(${posInContext})" title="Remove from this set" style="color:#f0a060;">−</button>`;
     item.innerHTML = `
@@ -2159,7 +2358,8 @@ function renderWordList() {
         <span class="word-item-name">${w.word}</span>
         <span class="word-item-def">${w.definition}</span>
       </div>
-      ${btnHtml}
+      <button class="bm-icon${isBookmarked ? ' active' : ''}" onclick="event.stopPropagation();toggleBookmark('${w.word.replace(/'/g,"\'")}')" title="Bookmark">⊙</button>
+      ${delBtn}
     `;
     list.appendChild(item);
   });
