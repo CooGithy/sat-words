@@ -1921,7 +1921,7 @@ async function searchFonts() {
       const item = document.createElement('div');
       item.className = 'font-result-item' + (fontName === current ? ' active' : '');
       item.dataset.font = fontName;
-      item.innerHTML = '<span class="font-result-name" style="font-family:'' + fontName + '',serif;">' + fontName + '</span>'
+      item.innerHTML = '<span class="font-result-name" style="font-family:&quot;' + fontName + '&quot;,serif;">' + fontName + '</span>'
         + '<span class="font-result-apply">Click to apply</span>';
       item.onclick = () => applyCustomFont(fontName);
       results.appendChild(item);
