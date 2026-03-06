@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SAT Words">
+<meta name="theme-color" content="#0e0e0e">
 <title>SAT Words</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=Cormorant+Garamond:wght@400;600&family=DM+Serif+Display&family=Fraunces:wght@400;700&family=Syne:wght@400;700&family=Space+Grotesk:wght@400;600&family=Crimson+Pro:wght@400;600&family=Josefin+Sans:wght@400;600&display=swap" rel="stylesheet">
 <style>
@@ -94,7 +98,6 @@
   .tab.active, .tab:hover { background: var(--accent); color: #000; border-color: var(--accent); }
 
   /* CARD */
-
   .card { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.5s cubic-bezier(0.4,0,0.2,1); }
   .card.flipped { transform: rotateY(180deg); }
   .card-face { position: absolute; inset: 0; backface-visibility: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center; }
@@ -186,8 +189,6 @@
 
   /* WORD LIST */
   .word-list-section { width: 100%; }
-  .word-list-toggle { background: none; border: none; color: var(--muted); font-family: var(--font-mono); font-size: 0.75rem; cursor: pointer; transition: color 0.15s; margin-bottom: 10px; display: block; }
-  .word-list-toggle:hover { color: var(--text); }
   .word-list { display: flex; flex-direction: column; gap: 6px; max-height: calc(100vh - 360px); overflow-y: auto; }
   .word-list-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
   .word-list-lbl { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
@@ -200,7 +201,6 @@
   .source-btn { background: none; border: 1px solid var(--border); border-radius: 999px; padding: 5px 14px; font-family: var(--font-mono); font-size: 0.68rem; color: var(--muted); cursor: pointer; transition: all 0.15s; }
   .source-btn:hover { border-color: var(--accent); color: var(--accent); }
   .source-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
-
   .word-item { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; gap: 10px; }
   .word-item-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
   .word-item-name { font-size: 0.82rem; color: var(--accent); font-family: var(--font-display); }
@@ -217,6 +217,7 @@
   .rating-mid:hover { background: #f0a060; color: #000; }
   .rating-easy { background: none; border-color: #7ecb20; color: #7ecb20; }
   .rating-easy:hover { background: #7ecb20; color: #000; }
+
   /* ANALYTICS */
   .analytics-section { margin-bottom: 10px; }
   .analytics-section-title { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; opacity: 0.9; }
@@ -226,7 +227,6 @@
   .analytics-bar-wrap { flex: 1; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
   .analytics-bar { height: 100%; border-radius: 3px; transition: width 0.4s; }
   .analytics-val { font-size: 0.68rem; color: var(--muted); font-family: var(--font-mono); min-width: 32px; text-align: right; }
-  .analytics-badge { font-size: 0.6rem; padding: 2px 8px; border-radius: 999px; font-family: var(--font-mono); }
   .analytics-empty { font-size: 0.78rem; color: var(--muted); text-align: center; padding: 40px 0; }
   .analytics-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 4px; }
   .analytics-stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
@@ -267,6 +267,7 @@
     padding: 3px 7px; border-radius: 6px; white-space: nowrap; pointer-events: none;
     opacity: 0; transition: opacity 0.15s; z-index: 10; }
   .font-theme-wrap:hover .font-theme-label { opacity: 1; }
+
   /* BG PRESETS */
   .bg-preset-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 8px; }
   #undo-toast.visible { opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
@@ -327,20 +328,100 @@
   .group-new-icon { font-size: 1.4rem; color: var(--muted); }
   .group-new-label { font-size: 0.75rem; color: var(--muted); font-family: var(--font-mono); }
 
-
-
   /* INLINE RENAME */
   .group-name-input { background: none; border: none; border-bottom: 1px solid var(--accent); color: var(--accent); font-family: var(--font-display); font-size: 1.1rem; outline: none; width: 100%; }
+
+  /* ── MOBILE (≤ 768px) ── */
+  @media (max-width: 768px) {
+    .app-layout { grid-template-columns: 1fr; min-height: unset; }
+    .left-panel { padding: 16px 16px 0; border-right: none; border-bottom: 1px solid var(--border); gap: 12px; }
+    .right-panel { padding: 16px; gap: 12px; overflow-y: unset; }
+
+    .top-header { padding: 12px 16px; }
+    .top-header h1 { font-size: 1.2rem; }
+    .top-header .groups-back { left: 12px !important; font-size: 0.68rem; padding: 5px 10px; }
+
+    .sat-wordmark { top: 10px; left: 12px; font-size: 0.85rem; }
+    .settings-btn { top: 12px; right: 12px; width: 40px; height: 40px; }
+    .settings-panel { top: 60px; right: 8px; left: 8px; width: auto; max-height: 75vh; }
+
+    .card-wrap { height: 200px; }
+    .card-word { font-size: 1.8rem; }
+    .card-face { padding: 20px 16px; }
+    .card-def { font-size: 0.88rem; }
+    .fc-progress-label { font-size: 0.55rem; }
+
+    .controls { gap: 8px; justify-content: center; }
+    .btn { padding: 10px 16px; font-size: 0.75rem; }
+    .shuffle-btn { font-size: 0.75rem; padding: 10px 16px; }
+
+    .tabs {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 4px;
+      justify-content: flex-start;
+      margin-bottom: 12px;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { white-space: nowrap; padding: 7px 12px; font-size: 0.68rem; flex-shrink: 0; }
+
+    .word-list { max-height: 260px; }
+    .word-list-header { flex-wrap: wrap; gap: 6px; }
+
+    .quiz-setup { padding: 20px 14px; }
+    .quiz-word { font-size: 1.6rem; margin-bottom: 16px; }
+    .option { padding: 11px 12px; font-size: 0.75rem; }
+    .results-lists { grid-template-columns: 1fr; }
+
+    .focus-setup { padding: 20px 14px; }
+    .rating-btn { padding: 9px 10px; font-size: 0.7rem; }
+
+    .home-title { font-size: 2.4rem; }
+    .home-tagline { font-size: 0.8rem; }
+    .home-features { grid-template-columns: 1fr; gap: 10px; }
+    .home-inner { gap: 24px; }
+    .cta-btn { padding: 12px 32px; }
+
+    .groups-header { margin-bottom: 20px; }
+    .groups-header h2 { font-size: 2.2rem; }
+    .groups-grid { grid-template-columns: 1fr; width: 100%; max-width: 420px; }
+    #groups-page { padding: 70px 16px 24px; justify-content: flex-start; align-items: center; }
+
+    .add-row { flex-direction: column; }
+    .add-btn { width: 100%; padding: 12px; }
+
+    .analytics-word { min-width: 80px; font-size: 0.75rem; }
+    #analytics-view { max-height: unset; }
+
+    .modal { padding: 22px 14px; width: 92%; }
+
+    #undo-toast { font-size: 0.75rem; padding: 9px 12px; width: 90vw; justify-content: space-between; }
+
+    .source-row { gap: 5px; }
+    .source-btn { padding: 4px 10px; font-size: 0.65rem; }
+  }
+
+  /* iPhone notch / home bar safe areas */
+  @supports (padding: env(safe-area-inset-bottom)) {
+    body { padding-bottom: env(safe-area-inset-bottom); }
+    #home-page {
+      padding-top: max(40px, env(safe-area-inset-top));
+      padding-left: max(24px, env(safe-area-inset-left));
+      padding-right: max(24px, env(safe-area-inset-right));
+    }
+    #groups-page { padding-top: max(60px, calc(env(safe-area-inset-top) + 20px)); }
+    .settings-btn { top: max(12px, env(safe-area-inset-top)); }
+    #undo-toast { bottom: max(28px, calc(env(safe-area-inset-bottom) + 12px)); }
+  }
 </style>
 </head>
 <body>
-
 
 <div id="home-page">
   <div class="home-inner">
 
     <div class="home-hero">
-
       <div class="home-title">SAT <span>Words</span></div>
       <div class="home-tagline">A smarter way to study vocabulary.<br>Flashcards, quizzes, and spaced repetition — all in one place.</div>
     </div>
@@ -379,11 +460,8 @@
   <div class="groups-grid" id="groups-grid"></div>
 </div>
 
-
-
 <button class="settings-btn" onclick="toggleSettings()">⚙</button>
 <div class="sat-wordmark" id="sat-wordmark">SAT</div>
-
 
 <div class="settings-panel" id="settings-panel">
   <hr class="divider">
@@ -400,7 +478,7 @@
   <div class="s-title">Background</div>
   <div class="bg-preset-grid" id="bg-preset-grid"></div>
   <hr class="divider">
-  <div class="s-title">Font & Style</div>
+  <div class="s-title">Font &amp; Style</div>
   <div class="font-theme-grid" id="font-theme-grid"></div>
   <button class="font-search-btn" onclick="openFontSearch()">⌕ Search Google Fonts</button>
   <hr class="divider">
@@ -408,7 +486,14 @@
   <button class="theme-btn" onclick="confirmResetAllData()" style="border-color:#ff5555;color:#ff5555;width:100%;">↺ Reset All Data</button>
 </div>
 
-<div class="top-header" style="position:relative;"><button class="groups-back" style="position:absolute;left:36px;" onclick="showGroupsPage()">← Groups</button><div style="display:flex;flex-direction:column;align-items:center;gap:2px;"><h1 style="margin:0;">SAT <span>Words</span></h1><span id="active-group-label" style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;"></span></div></div>
+<div class="top-header" style="position:relative;">
+  <button class="groups-back" style="position:absolute;left:36px;" onclick="showGroupsPage()">← Groups</button>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+    <h1 style="margin:0;">SAT <span>Words</span></h1>
+    <span id="active-group-label" style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;"></span>
+  </div>
+</div>
+
 <div class="app-layout">
 
   <!-- LEFT PANEL: card + controls + add -->
@@ -433,7 +518,7 @@
       </div>
     </div>
 
-    <!-- QUIZ LEFT (active + results shown here) -->
+    <!-- QUIZ -->
     <div id="quiz-view" style="display:none;">
       <div id="quiz-setup" class="quiz-setup">
         <div class="quiz-setup-title">Quiz</div>
@@ -482,7 +567,7 @@
       </div>
     </div>
 
-    <!-- FOCUSED STUDY LEFT -->
+    <!-- FOCUSED STUDY -->
     <div id="focus-view" style="display:none;">
       <div id="focus-setup" class="focus-setup">
         <div class="focus-label">Focused Study</div>
@@ -528,7 +613,7 @@
       </div>
     </div>
 
-    <!-- ANALYTICS VIEW (left panel) -->
+    <!-- ANALYTICS VIEW -->
     <div id="analytics-view" style="display:none;flex-direction:column;gap:14px;overflow-y:auto;max-height:calc(100vh - 120px);padding-bottom:20px;">
       <div id="analytics-content"></div>
     </div>
@@ -549,7 +634,7 @@
 
   </div><!-- end left-panel -->
 
-  <!-- RIGHT PANEL: title, tabs, shuffle, word list -->
+  <!-- RIGHT PANEL -->
   <div class="right-panel">
     <div class="tabs" style="justify-content:flex-start;margin:0;">
       <button class="tab active" onclick="switchMode('flash')">Flashcards</button>
@@ -560,7 +645,7 @@
 
     <button class="shuffle-btn" id="shuffle-btn" onclick="handleShuffle()">⇄ Shuffle</button>
 
-    <!-- WORD LIST always visible -->
+    <!-- WORD LIST -->
     <div class="word-list-section">
       <div class="word-list-header">
         <div class="word-list-lbl" id="word-list-label">All Words (<span id="word-count">0</span>)</div>
@@ -575,21 +660,21 @@
 
 <script>
 
-// ── HOME / STATS ──
+// ── STATS ──
 let appStats = JSON.parse(localStorage.getItem('sat-stats') || '{"quizzesTaken":0,"bestScore":0}');
-
 function saveStats() { localStorage.setItem('sat-stats', JSON.stringify(appStats)); }
-
 
 // ── TIME TRACKING ──
 let _cardShownAt = null;
 let _trackingWord = null;
-let _trackingGroupId = null; // snapshot of group at timer start
+let _trackingGroupId = null;
+
 function startWordTimer(word) {
   _cardShownAt = Date.now();
   _trackingWord = word;
-  _trackingGroupId = activeGroupId; // lock in which group this belongs to
+  _trackingGroupId = activeGroupId;
 }
+
 function stopWordTimer() {
   if (!_cardShownAt || !_trackingWord) return;
   const secs = Math.round((Date.now() - _cardShownAt) / 1000);
@@ -603,11 +688,10 @@ function stopWordTimer() {
   }
 }
 
-// stop timer when user leaves the tab
 document.addEventListener('visibilitychange', function() {
-  if (document.hidden) stopWordTimer();
-  else {
-    // restart timer when tab becomes visible again if we're on flash/focus
+  if (document.hidden) {
+    stopWordTimer();
+  } else {
     if (activeMode === 'flash' && words.length > 0) {
       const wi = fcOrder[fcIdx % fcOrder.length];
       if (words[wi]) startWordTimer(words[wi].word);
@@ -616,7 +700,6 @@ document.addEventListener('visibilitychange', function() {
 });
 
 // ── ANALYTICS ──
-// wordAnalytics[groupId][word] = { quizCorrect, quizWrong, focusHard, focusMid, focusEasy, flashViews }
 function getWordAnalytics() {
   return JSON.parse(localStorage.getItem('sat-word-analytics') || '{}');
 }
@@ -627,7 +710,8 @@ function getGroupAnalytics() {
   const data = getWordAnalytics();
   return data[activeGroupId] || {};
 }
-let _sessionGroupId = null; // locked when a study session starts
+
+let _sessionGroupId = null;
 
 function recordAnalytic(word, field, amount=1, groupIdOverride) {
   const data = getWordAnalytics();
@@ -638,6 +722,7 @@ function recordAnalytic(word, field, amount=1, groupIdOverride) {
   data[gid][word][field] = (data[gid][word][field] || 0) + amount;
   saveWordAnalytics(data);
 }
+
 function deleteWordAnalytic(word) {
   const data = getWordAnalytics();
   if (data[activeGroupId]) {
@@ -685,11 +770,11 @@ function renderAnalytics() {
     return { w: w, score: masteryScore(ga[w]), d: ga[w] };
   }).filter(function(x) { return x.score >= 0; });
 
-  var needWork = scored.filter(function(x) { return x.score < 55; })
+  var needWork  = scored.filter(function(x) { return x.score < 55; })
     .sort(function(a,b) { return a.score - b.score; }).slice(0, 8);
   var confident = scored.filter(function(x) { return x.score >= 70; })
     .sort(function(a,b) { return b.score - a.score; }).slice(0, 8);
-  var mostTime = wordList.map(function(w) {
+  var mostTime  = wordList.map(function(w) {
     return { w: w, t: ga[w].timeSeconds || 0 };
   }).filter(function(x) { return x.t > 0; })
     .sort(function(a,b) { return b.t - a.t; }).slice(0, 8);
@@ -735,6 +820,8 @@ function renderAnalytics() {
 
   el.innerHTML = html;
 }
+
+// ── HOME ──
 function enterApp() {
   const hp = document.getElementById('home-page');
   const wm = document.getElementById('sat-wordmark');
@@ -749,7 +836,8 @@ function showHome() {
   hp.style.display = 'flex';
   hp.classList.remove('hiding');
   hideGroupsPage();
-  const wm = document.getElementById('sat-wordmark'); if (wm) wm.style.display = 'block';
+  const wm = document.getElementById('sat-wordmark');
+  if (wm) wm.style.display = 'block';
 }
 
 // ── THEME ──
@@ -790,16 +878,10 @@ function buildDefaultTheme() {
   return t;
 }
 
-
-
-
 let theme = JSON.parse(localStorage.getItem('sat-theme2') || 'null') || buildDefaultTheme();
 
-
-// ── GRADIENT ──
 // ── BACKGROUND PRESETS ──
 const bgPresets = [
-  // Row 1 — Dark
   { name:'Noir',         bg:'#0c0c0c', accent:'#e8d5a3', surface:'#161616', text:'#ede8df' },
   { name:'Midnight',     bg:'#0f0c29', accent:'#a78bfa', surface:'#1e1b40', text:'#ede9fe' },
   { name:'Slate',        bg:'#0f172a', accent:'#7dd3fc', surface:'#1e293b', text:'#e2e8f0' },
@@ -807,7 +889,6 @@ const bgPresets = [
   { name:'Sage',         bg:'#0d1a12', accent:'#86efac', surface:'#162414', text:'#dcfce7' },
   { name:'Violet',       bg:'#0f0a1e', accent:'#c084fc', surface:'#1a1030', text:'#ede9fe' },
   { name:'Rose',         bg:'#1a0812', accent:'#fb7185', surface:'#27101e', text:'#ffe4e6' },
-  // Row 2 — Mid
   { name:'Graphite',     bg:'#18181b', accent:'#a1a1aa', surface:'#27272a', text:'#e4e4e7' },
   { name:'Forest',       bg:'#14291e', accent:'#4ade80', surface:'#1e3d2a', text:'#dcfce7' },
   { name:'Plum',         bg:'#2e1065', accent:'#c084fc', surface:'#3d1a80', text:'#f3e8ff' },
@@ -815,7 +896,6 @@ const bgPresets = [
   { name:'Dusk',         bg:'#130d2a', accent:'#f472b6', surface:'#2d1b4e', text:'#fce7f3' },
   { name:'Storm',        bg:'#1a1f2e', accent:'#94a3b8', surface:'#252b3b', text:'#e2e8f0' },
   { name:'Pine',         bg:'#0c2118', accent:'#34d399', surface:'#163122', text:'#d1fae5' },
-  // Row 3 — Light
   { name:'Parchment',    bg:'#fdf6e3', accent:'#92400e', surface:'#f5ecd0', text:'#1c1410' },
   { name:'Cream',        bg:'#fffbeb', accent:'#d97706', surface:'#fde8c0', text:'#1c1410' },
   { name:'Cotton Candy', bg:'#fce8f3', accent:'#7ec8f7', surface:'#fad4ec', text:'#2e1028' },
@@ -828,7 +908,6 @@ const bgPresets = [
 let activeBgPreset = localStorage.getItem('sat-bg-preset') || null;
 
 function applyBgPreset(p, save=true) {
-  // apply bg as flat color, also update theme to match
   theme.bg      = hexToHsl(p.bg);
   theme.surface = hexToHsl(p.surface);
   theme.accent  = hexToHsl(p.accent);
@@ -839,7 +918,6 @@ function applyBgPreset(p, save=true) {
     localStorage.setItem('sat-bg-preset', p.name);
     localStorage.setItem('sat-theme', JSON.stringify(theme));
   }
-  // update active state on buttons
   document.querySelectorAll('.bg-preset-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.name === p.name);
   });
@@ -882,10 +960,8 @@ function applyTheme() {
     }
     const hv = document.getElementById('hv-'+z.key);
     if (hv) hv.textContent = hex;
-
     if (z.key === 'surface') {
-      const bh = h, bs = s, bl = Math.min(100, l + 10);
-      document.documentElement.style.setProperty('--border', hslToHex(bh,bs,bl));
+      document.documentElement.style.setProperty('--border', hslToHex(h, s, Math.min(100, l+10)));
       document.documentElement.style.setProperty('--settings-bg', hex);
     }
     if (z.key === 'text') {
@@ -893,7 +969,6 @@ function applyTheme() {
     }
   });
   localStorage.setItem('sat-theme2', JSON.stringify(theme));
-  // update wordmark color based on bg luminance
   updateWordmarkColor();
 }
 
@@ -901,7 +976,6 @@ function updateWordmarkColor() {
   const el = document.getElementById('sat-wordmark');
   if (!el) return;
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
-  // parse hex to get luminance
   const hex = bg.replace('#','');
   const r = parseInt(hex.slice(0,2),16)/255;
   const g = parseInt(hex.slice(2,4),16)/255;
@@ -923,24 +997,20 @@ function doResetAllData() {
                 'sat-custom-display-font','sat-custom-mono-font','sat-fc-idx','sat-bookmarks'];
   keys.forEach(k => localStorage.removeItem(k));
   closeResetAllModal();
-  // Reset progress bar immediately
   const _pb = document.getElementById('fc-progress-bar');
   const _pl = document.getElementById('fc-progress-label');
   if (_pb) _pb.style.width = '0%';
   if (_pl) _pl.textContent = '0%';
-  // Re-init state
   groups = [];
   activeGroupId = null;
   words = [];
   fcOrder = []; fcIdx = 0;
   _fcIdxByGroup = {};
-  // Reset theme
   theme = buildDefaultTheme();
   activeBgPreset = null;
   document.querySelectorAll('.bg-preset-btn').forEach(b => b.classList.remove('active'));
   applyTheme();
   applyFontTheme(null);
-  // Re-fetch SAT preset then show groups page
   const hp = document.getElementById('home-page');
   hp.style.display = 'none';
   _satPresetLoaded = false;
@@ -1000,7 +1070,6 @@ function buildColorZones() {
 
 function updateZone(key, channel, value) {
   theme[key][channel] = parseInt(value);
-  // deactivate preset highlight since user is now customizing
   activeBgPreset = null;
   localStorage.removeItem('sat-bg-preset');
   document.querySelectorAll('.bg-preset-btn').forEach(b => b.classList.remove('active'));
@@ -1039,14 +1108,12 @@ document.addEventListener('click', e => {
   if (!p.contains(e.target) && !b.contains(e.target)) p.classList.remove('open');
 });
 
-
-// Independent context per mode
+// ── WORD LIST CONTEXT (independent per mode) ──
 let ctxFlash = 'all';
 let ctxQuiz  = 'all';
 let ctxFocus = 'all';
-let activeMode = 'flash'; // track which mode is showing
+let activeMode = 'flash';
 
-// wordListContext is derived from activeMode
 Object.defineProperty(window, 'wordListContext', {
   get() {
     if (activeMode === 'quiz')  return ctxQuiz;
@@ -1054,20 +1121,18 @@ Object.defineProperty(window, 'wordListContext', {
     return ctxFlash;
   },
   set(v) {
-    if (activeMode === 'quiz')  ctxQuiz  = v;
+    if (activeMode === 'quiz')       ctxQuiz  = v;
     else if (activeMode === 'focus') ctxFocus = v;
-    else ctxFlash = v;
+    else                             ctxFlash = v;
   }
 });
 
 function setWordListContext(ctx) {
-  if (activeMode === 'quiz')  ctxQuiz  = ctx;
+  if (activeMode === 'quiz')       ctxQuiz  = ctx;
   else if (activeMode === 'focus') ctxFocus = ctx;
-  else ctxFlash = ctx;
+  else                             ctxFlash = ctx;
   const lbl = document.getElementById('word-list-label');
-  if (lbl) {
-    lbl.firstChild.textContent = ctx === 'all' ? 'All Words (' : 'In Session (';
-  }
+  if (lbl) lbl.firstChild.textContent = ctx === 'all' ? 'All Words (' : 'In Session (';
   renderWordList();
 }
 
@@ -1090,37 +1155,27 @@ const SAT_PRESET_ID = 'sat-preset-1000';
 let SAT_PRESET_WORDS = [];
 let _satPresetLoaded = false;
 
-// ── MIGRATION (never wipes data, just patches missing fields) ──
 function migrateData() {
   let g = JSON.parse(localStorage.getItem('sat-groups') || 'null');
-  if (!g) return; // nothing saved yet, nothing to migrate
-
+  if (!g) return;
   let changed = false;
-
-  // Remove stale gradient keys that are no longer used
   ['sat-grad','sat-grad-on'].forEach(k => {
     if (localStorage.getItem(k) !== null) { localStorage.removeItem(k); changed = true; }
   });
-
-  // Ensure every group has the fields the current code expects
   g.forEach(grp => {
     if (!('preset' in grp)) { grp.preset = false; changed = true; }
     if (!Array.isArray(grp.words)) { grp.words = []; changed = true; }
   });
-
-  // Deduplicate by id first, then by name
   const seenIds = {}, seenNames = {};
   const deduped = [];
   g.forEach(grp => {
     const idKey   = grp.id;
     const nameKey = grp.name.trim().toLowerCase();
     if (seenIds[idKey] !== undefined) {
-      // same id — keep the one with more words
       const ei = seenIds[idKey];
       if (grp.words.length > deduped[ei].words.length) deduped[ei] = grp;
       changed = true;
     } else if (seenNames[nameKey] !== undefined) {
-      // same name different id — keep preset id or more words
       const ei = seenNames[nameKey];
       if (grp.id === SAT_PRESET_ID || grp.words.length > deduped[ei].words.length) {
         seenIds[deduped[ei].id] = undefined;
@@ -1135,7 +1190,6 @@ function migrateData() {
     }
   });
   if (deduped.length !== g.length) { g = deduped; changed = true; }
-
   if (changed) localStorage.setItem('sat-groups', JSON.stringify(g));
 }
 
@@ -1146,27 +1200,24 @@ if (!groups) {
   groups = [];
   localStorage.setItem('sat-groups', JSON.stringify(groups));
 }
-// Remove the old empty default "All Words" group if it has no words and isn't actively used
 groups = groups.filter(g => !(g.id === 'default' && g.name === 'All Words' && g.words.length === 0));
 localStorage.setItem('sat-groups', JSON.stringify(groups));
+
 let activeGroupId = localStorage.getItem('sat-active-group') || null;
 if (!activeGroupId || !groups.find(g => g.id === activeGroupId)) {
   activeGroupId = groups.length ? groups[0].id : null;
 }
 
-// Load SAT preset from external file in the background
 fetch('sat-words.json')
   .then(r => r.json())
   .then(data => {
     SAT_PRESET_WORDS = data;
-    // Deduplicate: remove any extra copies of the preset before adding
     groups = groups.filter((g, i) => !(g.id === SAT_PRESET_ID && i !== groups.findIndex(x => x.id === SAT_PRESET_ID)));
     if (!_satPresetLoaded && !groups.find(g => g.id === SAT_PRESET_ID)) {
       _satPresetLoaded = true;
       groups.push({ id: SAT_PRESET_ID, name: 'SAT 1000', words: data.map(w => ({...w})), preset: true });
       localStorage.setItem('sat-groups', JSON.stringify(groups));
     }
-    // Only re-sync if no valid group is selected yet
     if (!activeGroupId || !groups.find(g => g.id === activeGroupId)) {
       activeGroupId = groups.length ? groups[0].id : null;
       const ag = getActiveGroup();
@@ -1185,8 +1236,7 @@ fetch('sat-words.json')
 function getActiveGroup() { return groups.find(g => g.id === activeGroupId) || groups[0]; }
 function saveGroups() { localStorage.setItem('sat-groups', JSON.stringify(groups)); localStorage.setItem('sat-active-group', activeGroupId); }
 
-// ── WORDS (always from active group) ──
-let words = getActiveGroup().words;
+let words = (getActiveGroup() || { words: [] }).words;
 let fcOrder = words.map((_,i)=>i);
 let _fcIdxByGroup = JSON.parse(localStorage.getItem('sat-fc-idx') || '{}');
 let fcIdx = _fcIdxByGroup[activeGroupId] || 0;
@@ -1201,7 +1251,6 @@ function saveFcIdx() {
 function saveWords() {
   const g = getActiveGroup();
   g.words = words;
-  // if words changed, group is no longer a pristine preset
   if (g.preset && g.id !== SAT_PRESET_ID) g.preset = false;
   saveGroups();
 }
@@ -1218,24 +1267,22 @@ function switchGroup(id) {
   _sessionGroupId = null;
   _bmFilterActive = false;
   _quizSource = 'all'; _focusSource = 'all';
-  const _bmfb = document.getElementById('bm-filter-btn'); if(_bmfb) _bmfb.classList.remove('active');
+  const _bmfb = document.getElementById('bm-filter-btn');
+  if (_bmfb) _bmfb.classList.remove('active');
   saveGroups();
-  // reset progress bar immediately for the new group
   const _pb2 = document.getElementById('fc-progress-bar');
   const _pl2 = document.getElementById('fc-progress-label');
   if (_pb2) _pb2.style.width = '0%';
   if (_pl2) _pl2.textContent = '0%';
-  // update label immediately
-  const _wm = document.getElementById('sat-wordmark'); if (_wm) _wm.style.display = 'none';
+  const _wm = document.getElementById('sat-wordmark');
+  if (_wm) _wm.style.display = 'none';
   const lbl = document.getElementById('active-group-label');
   if (lbl) lbl.textContent = getActiveGroup().name;
-  // if coming from home page, animate it away
   const hp = document.getElementById('home-page');
   if (hp && hp.style.display !== 'none') {
     hp.classList.add('hiding');
     setTimeout(() => { hp.style.display = 'none'; }, 500);
   }
-  // always hide groups page and refresh the app view
   hideGroupsPage();
   switchMode('flash');
   showCard();
@@ -1266,7 +1313,6 @@ function renderGroupsPage() {
     card.addEventListener('click', () => switchGroup(g.id));
     grid.appendChild(card);
   });
-  // new group card
   const nc = document.createElement('div');
   nc.className = 'group-new-card';
   nc.innerHTML = '<div class="group-new-icon">+</div><div class="group-new-label">New Group</div>';
@@ -1279,7 +1325,6 @@ let _newGroupType = 'empty';
 function createGroup() {
   _newGroupType = 'empty';
   document.getElementById('new-group-name-input').value = '';
-  // show/hide preset card based on whether json loaded
   const presetCard = document.getElementById('ngm-preset-btn');
   if (SAT_PRESET_WORDS.length === 0) {
     presetCard.style.display = 'none';
@@ -1333,10 +1378,11 @@ function confirmNewGroup() {
   groups.push({ id, name, words: startWords, preset: usingPreset });
   closeNewGroupModal();
   saveGroups();
-  showGroupsPage();  // stay on groups page so new group (with badge) is visible
+  showGroupsPage();
 }
 
 let _renameTargetId = null;
+
 function renameGroup(id) {
   const g = groups.find(x => x.id === id); if (!g) return;
   _renameTargetId = id;
@@ -1348,10 +1394,12 @@ function renameGroup(id) {
     inp.focus(); inp.select();
   }, 80);
 }
+
 function closeRenameModal() {
   document.getElementById('rename-group-modal').classList.remove('open');
   _renameTargetId = null;
 }
+
 function confirmRenameGroup() {
   const name = document.getElementById('rename-group-input').value.trim();
   if (!name) {
@@ -1366,16 +1414,19 @@ function confirmRenameGroup() {
 }
 
 let _deleteTargetId = null;
+
 function deleteGroup(id) {
   const g = groups.find(x => x.id === id); if (!g) return;
   _deleteTargetId = id;
   document.getElementById('delete-group-name').textContent = g.name;
   document.getElementById('delete-group-modal').classList.add('open');
 }
+
 function closeDeleteModal() {
   document.getElementById('delete-group-modal').classList.remove('open');
   _deleteTargetId = null;
 }
+
 function confirmDeleteGroup() {
   const id = _deleteTargetId; if (!id) return;
   closeDeleteModal();
@@ -1384,10 +1435,13 @@ function confirmDeleteGroup() {
     activeGroupId = groups.length ? groups[0].id : null;
     words = activeGroupId ? getActiveGroup().words : [];
     fcOrder = []; fcIdx = 0;
-    if (activeGroupId) { showCard(); renderWordList(); const lbl = document.getElementById('active-group-label'); if(lbl) lbl.textContent = getActiveGroup().name; }
+    if (activeGroupId) {
+      showCard(); renderWordList();
+      const lbl = document.getElementById('active-group-label');
+      if (lbl) lbl.textContent = getActiveGroup().name;
+    }
   }
   saveGroups();
-  // remove the card directly from the DOM immediately
   const deadCard = document.querySelector(`.group-card[data-group-id="${id}"]`);
   if (deadCard) deadCard.remove();
 }
@@ -1402,30 +1456,30 @@ function confirmResetPreset() {
   closeResetModal();
   const g = groups.find(x => x.id === SAT_PRESET_ID);
   if (g) { g.words = SAT_PRESET_WORDS.map(w => ({...w})); }
-  if (activeGroupId === SAT_PRESET_ID) { words = getActiveGroup().words; fcOrder = words.map((_,i)=>i); fcIdx=0; showCard(); renderWordList(); }
+  if (activeGroupId === SAT_PRESET_ID) {
+    words = getActiveGroup().words;
+    fcOrder = words.map((_,i)=>i); fcIdx = 0;
+    showCard(); renderWordList();
+  }
   saveGroups(); renderGroupsPage();
 }
-
-
 
 function showGroupsPage() {
   stopWordTimer();
   document.getElementById('groups-page').classList.add('active');
   renderGroupsPage();
-  const wm = document.getElementById('sat-wordmark'); if (wm) wm.style.display = 'none';
+  const wm = document.getElementById('sat-wordmark');
+  if (wm) wm.style.display = 'none';
 }
 
 function hideGroupsPage() {
   document.getElementById('groups-page').classList.remove('active');
 }
 
+// ── FLASHCARDS ──
 function showCard() {
-  // only stop/start timer when actively in flash mode
-  if (activeMode === 'flash') {
-    stopWordTimer();
-  }
+  if (activeMode === 'flash') stopWordTimer();
   _sessionGroupId = activeGroupId;
-  // record flash view for current word
   if (activeMode === 'flash' && words.length > 0 && fcOrder.length > 0) {
     const wi = fcOrder[fcIdx % fcOrder.length];
     if (words[wi]) {
@@ -1448,34 +1502,33 @@ function showCard() {
   document.getElementById('fc-word').textContent = w.word;
   document.getElementById('fc-def').textContent = w.definition;
   document.getElementById('fc-counter').textContent = `${fcIdx+1} / ${fcOrder.length}`;
-  // update progress bar
   const pbar = document.getElementById('fc-progress-bar');
   const plbl = document.getElementById('fc-progress-label');
-  if (pbar && plbl) {
-    if (fcOrder.length > 0 && words.length > 0) {
-      const pct = Math.round(((fcIdx + 1) / fcOrder.length) * 100);
-      pbar.style.width = pct + '%';
-      plbl.textContent = pct + '%';
-    } else {
-      pbar.style.width = '0%';
-      plbl.textContent = '0%';
-    }
+  if (pbar && plbl && fcOrder.length > 0) {
+    const pct = Math.round(((fcIdx + 1) / fcOrder.length) * 100);
+    pbar.style.width = pct + '%';
+    plbl.textContent = pct + '%';
   }
 }
 
 function flipCard() { document.getElementById('card').classList.toggle('flipped'); }
 function nextCard() { if (!words.length) return; fcIdx = (fcIdx+1)%fcOrder.length; saveFcIdx(); showCard(); }
 function prevCard() { if (!words.length) return; fcIdx = (fcIdx-1+fcOrder.length)%fcOrder.length; saveFcIdx(); showCard(); }
+
 function shuffleFlash() {
-  for (let i=fcOrder.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [fcOrder[i],fcOrder[j]]=[fcOrder[j],fcOrder[i]]; }
+  for (let i=fcOrder.length-1;i>0;i--) {
+    const j=Math.floor(Math.random()*(i+1));
+    [fcOrder[i],fcOrder[j]]=[fcOrder[j],fcOrder[i]];
+  }
   fcIdx=0; saveFcIdx(); showCard();
 }
 
 function shuffleFocus() {
-  // re-shuffle the focusQueue from current position onward, keeping mastered out
   const remaining = focusSet.filter(wi => !focusMasteredSet.has(wi));
-  for (let i=remaining.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [remaining[i],remaining[j]]=[remaining[j],remaining[i]]; }
-  // rebuild queue from remaining
+  for (let i=remaining.length-1;i>0;i--) {
+    const j=Math.floor(Math.random()*(i+1));
+    [remaining[i],remaining[j]]=[remaining[j],remaining[i]];
+  }
   focusQueue = remaining.map(wi => ({ wordIdx: wi, due: 0 }));
   focusAttempt = 0;
   showFocusCard();
@@ -1487,18 +1540,22 @@ function handleShuffle() {
   } else if (activeMode === 'flash') {
     shuffleFlash();
   }
-  // do nothing in quiz mode
 }
 
 function updateShuffleBtn() {
   const btn = document.getElementById('shuffle-btn');
   if (!btn) return;
-  if (activeMode === 'quiz') {
-    btn.style.display = 'none';
-  } else {
-    btn.style.display = 'block';
-  }
+  btn.style.display = activeMode === 'quiz' ? 'none' : 'block';
 }
+
+// ── KEYBOARD NAVIGATION ──
+document.addEventListener('keydown', function(e) {
+  if (activeMode !== 'flash') return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); nextCard(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prevCard(); }
+  else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flipCard(); }
+});
 
 // ── QUIZ ──
 let quizMode = 'infinite';
@@ -1508,12 +1565,29 @@ let quizPool = [];
 let quizAsked = [];
 let quizAnswered = false, quizCorrectIdx = 0;
 let quizCorrectWords = [], quizWrongWords = [];
+let _quizSource = 'all', _focusSource = 'all';
 
 function selectQuizMode(m) {
   quizMode = m;
   document.getElementById('mode-infinite').classList.toggle('active', m==='infinite');
   document.getElementById('mode-limited').classList.toggle('active', m==='limited');
   document.getElementById('limit-input-row').style.display = m==='limited' ? 'flex' : 'none';
+}
+
+function selectQuizSource(src) {
+  _quizSource = src;
+  document.getElementById('qsrc-all').classList.toggle('active', src === 'all');
+  document.getElementById('qsrc-bookmarked').classList.toggle('active', src === 'bookmarked');
+}
+
+function selectFocusSource(src) {
+  _focusSource = src;
+  document.getElementById('fsrc-all').classList.toggle('active', src === 'all');
+  document.getElementById('fsrc-bookmarked').classList.toggle('active', src === 'bookmarked');
+  const msg = document.getElementById('focus-setup-msg');
+  if (msg) msg.innerHTML = src === 'bookmarked'
+    ? 'Pick a number of bookmarked words to study.<br>Bookmarked words will be pulled randomly.'
+    : 'Pick a number of words to study.<br>A random set will be pulled from your list.';
 }
 
 function startQuiz() {
@@ -1525,14 +1599,17 @@ function startQuiz() {
     quizLimit = Math.min(v, words.length);
   }
   quizQ = 0; quizCorrect = 0; quizCorrectWords = []; quizWrongWords = []; quizAsked = [];
-  // build quiz pool — filter by source
+  // build pool, filtered by bookmark source if needed
   const bm_q = getBookmarks();
   let baseIdx = words.map((_,i)=>i);
   if (_quizSource === 'bookmarked') {
     baseIdx = baseIdx.filter(i => bm_q[words[i].word]);
     if (baseIdx.length < 2) { alert('You need at least 2 bookmarked words to quiz.'); return; }
   }
-  for(let i=baseIdx.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[baseIdx[i],baseIdx[j]]=[baseIdx[j],baseIdx[i]];}
+  for (let i=baseIdx.length-1;i>0;i--) {
+    const j=Math.floor(Math.random()*(i+1));
+    [baseIdx[i],baseIdx[j]]=[baseIdx[j],baseIdx[i]];
+  }
   if (quizMode === 'limited') quizLimit = Math.min(quizLimit, baseIdx.length);
   quizPool = quizMode === 'limited' ? baseIdx.slice(0, quizLimit) : baseIdx;
   setWordListContext(quizMode === 'limited' ? [...quizPool] : (_quizSource === 'bookmarked' ? [...baseIdx] : 'all'));
@@ -1547,28 +1624,21 @@ function nextQuestion() {
   quizAnswered = false;
   document.getElementById('q-feedback').textContent = '';
   document.getElementById('q-next').style.display = 'none';
-
-  // pick correct answer — prefer unasked words first
   const activePool = quizPool.length > 0 ? quizPool : words.map((_,i)=>i);
   const unasked = activePool.filter(i => !quizAsked.includes(i));
   const pickFrom = unasked.length > 0 ? unasked : activePool;
   const ci = pickFrom[Math.floor(Math.random() * pickFrom.length)];
   quizAsked.push(ci);
-  if (quizAsked.length >= activePool.length) quizAsked = []; // reset cycle
+  if (quizAsked.length >= activePool.length) quizAsked = [];
   quizCorrectIdx = ci;
   document.getElementById('q-word').textContent = words[ci].word;
-
-  const total = quizMode === 'limited' ? quizPool.length : null;
-  const label = quizMode === 'limited' ? `${quizQ+1} / ${total}` : `Q${quizQ+1}`;
+  const label = quizMode === 'limited' ? `${quizQ+1} / ${quizPool.length}` : `Q${quizQ+1}`;
   document.getElementById('q-progress').textContent = label;
   document.getElementById('q-live-score').textContent = quizQ > 0 ? `${quizCorrect} / ${quizQ} correct` : '';
-
-  // wrong answers can come from all words for more variety
   const pool = words.map((_,i)=>i).filter(i=>i!==ci);
   for (let i=pool.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
   const opts = [ci, ...pool.slice(0, Math.min(3, pool.length))];
   for (let i=opts.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [opts[i],opts[j]]=[opts[j],opts[i]]; }
-
   const container = document.getElementById('q-options');
   container.innerHTML = '';
   opts.forEach(idx => {
@@ -1606,39 +1676,33 @@ function answerQ(btn, isCorrect, ci) {
 }
 
 function endQuiz() {
-  if (quizQ === 0) { showQuizSetup(); return; } showResults(); }
+  if (quizQ === 0) { showQuizSetup(); return; }
+  showResults();
+}
 
 function showResults() {
   document.getElementById('quiz-active').style.display = 'none';
   document.getElementById('quiz-results').style.display = 'block';
-
   const pct = quizQ === 0 ? 0 : Math.round((quizCorrect / quizQ) * 100);
   document.getElementById('r-pct').textContent = pct + '%';
-  // track stats
   appStats.quizzesTaken++;
   if (pct > appStats.bestScore) appStats.bestScore = pct;
   saveStats();
   document.getElementById('r-sub').textContent = `${quizCorrect} correct out of ${quizQ} questions`;
-
   const lists = document.getElementById('r-lists');
   lists.innerHTML = '';
-
   const uniqueRight = [...new Set(quizCorrectWords)];
   const uniqueWrong = [...new Set(quizWrongWords)];
-
   const rightEl = document.createElement('div');
   rightEl.className = 'result-group right';
-  rightEl.innerHTML = `<div class="result-group-title">✓ Got Right (${uniqueRight.length})</div>` +
-    (uniqueRight.length ? uniqueRight.map(w=>`<div class="result-word">${w}</div>`).join('') : '<div class="result-word" style="color:var(--muted)">none</div>');
-
+  rightEl.innerHTML = `<div class="result-group-title">✓ Got Right (${uniqueRight.length})</div>`
+    + (uniqueRight.length ? uniqueRight.map(w=>`<div class="result-word">${w}</div>`).join('') : '<div class="result-word" style="color:var(--muted)">none</div>');
   const wrongEl = document.createElement('div');
   wrongEl.className = 'result-group wrong';
-  wrongEl.innerHTML = `<div class="result-group-title">✗ Got Wrong (${uniqueWrong.length})</div>` +
-    (uniqueWrong.length ? uniqueWrong.map(w=>`<div class="result-word">${w}</div>`).join('') : '<div class="result-word" style="color:var(--muted)">none</div>');
-
+  wrongEl.innerHTML = `<div class="result-group-title">✗ Got Wrong (${uniqueWrong.length})</div>`
+    + (uniqueWrong.length ? uniqueWrong.map(w=>`<div class="result-word">${w}</div>`).join('') : '<div class="result-word" style="color:var(--muted)">none</div>');
   lists.appendChild(rightEl);
   lists.appendChild(wrongEl);
-
   document.getElementById('wrong-prompt').style.display = quizWrongWords.length > 0 ? 'block' : 'none';
 }
 
@@ -1661,8 +1725,6 @@ let focusStatus = {};
 let focusStartTime = null;
 let focusMasteredSet = new Set();
 
-
-
 function downloadFocusJSON() {
   const indices = focusWrongIndices.length > 0 ? focusWrongIndices : focusSet;
   const data = indices.map(i => words[i]).filter(Boolean);
@@ -1678,16 +1740,13 @@ function studyWrong() {
     .filter(i => i !== -1);
   focusSessionDone = false;
   focusSet = [...new Set(wrongIndices)];
-  // fully wipe and reinitialize focus state
   focusQueue = focusSet.map(wi => ({ wordIdx: wi, due: 0 }));
   focusAttempt = 0;
   focusStatus = {};
   focusMasteredSet = new Set();
   focusWrongIndices = [];
   focusStartTime = Date.now();
-  // wipe the focus context so it shows the new set
   ctxFocus = focusSet.slice();
-  // switch to focus tab and show card
   activeMode = 'focus';
   document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i === 2));
   document.getElementById('flash-view').style.display = 'none';
@@ -1700,7 +1759,6 @@ function studyWrong() {
   refreshWordListForMode();
   updateShuffleBtn();
   showFocusCard();
-  // reset quiz back to setup so it starts fresh next time
   ctxQuiz = 'all';
   quizPool = []; quizAsked = [];
   document.getElementById('quiz-setup').style.display = 'block';
@@ -1719,11 +1777,13 @@ function startFocus() {
     baseF = baseF.filter(i => bm_f[words[i].word]);
     if (baseF.length < 2) { alert('You need at least 2 bookmarked words to study.'); return; }
   }
-  for (let i=baseF.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [baseF[i],baseF[j]]=[baseF[j],baseF[i]]; }
+  for (let i=baseF.length-1;i>0;i--) {
+    const j=Math.floor(Math.random()*(i+1));
+    [baseF[i],baseF[j]]=[baseF[j],baseF[i]];
+  }
   const count_clamped = Math.min(count, baseF.length);
   focusSessionDone = false;
   focusSet = baseF.slice(0, count_clamped);
-  // build initial queue
   focusQueue = focusSet.map(wi => ({ wordIdx: wi, due: 0 }));
   focusAttempt = 0;
   focusStatus = {};
@@ -1737,7 +1797,6 @@ function startFocus() {
 }
 
 function currentFocusItem() {
-  // find next item in queue that is due and not mastered
   for (let i = focusAttempt; i < focusQueue.length; i++) {
     const item = focusQueue[i];
     if (!focusMasteredSet.has(item.wordIdx)) return { item, queueIdx: i };
@@ -1766,25 +1825,19 @@ function rateFocus(rating) {
   if (!next) return;
   const { item, queueIdx } = next;
   focusStatus[item.wordIdx] = rating;
-
   const ratedWord = words[item.wordIdx]?.word;
   if (ratedWord) recordAnalytic(ratedWord, rating === 'easy' ? 'focusEasy' : rating === 'mid' ? 'focusMid' : 'focusHard');
   if (rating === 'easy') {
     focusMasteredSet.add(item.wordIdx);
-    // remove all future occurrences of this word
     focusQueue = focusQueue.filter((q, i) => i === queueIdx || q.wordIdx !== item.wordIdx);
   } else if (rating === 'mid') {
-    // reappears in 4-6 cards
     const delay = 4 + Math.floor(Math.random() * 3);
     focusQueue.splice(focusAttempt + delay, 0, { wordIdx: item.wordIdx, due: focusAttempt + delay });
   } else {
-    // hard: reappears in 1-2 cards
     const delay = 1 + Math.floor(Math.random() * 2);
     focusQueue.splice(focusAttempt + delay, 0, { wordIdx: item.wordIdx, due: focusAttempt + delay });
   }
-
   focusAttempt++;
-  // check if all mastered
   if (focusMasteredSet.size === focusSet.length) { showFocusResults(); return; }
   showFocusCard();
 }
@@ -1794,22 +1847,16 @@ function showFocusResults() {
   focusSessionDone = true;
   document.getElementById('focus-card-wrap').style.display = 'none';
   document.getElementById('focus-results').style.display = 'block';
-  // keep word list showing the session words on the results screen
   setWordListContext(focusSet.slice());
-
   const elapsed = focusStartTime ? Math.round((Date.now() - focusStartTime) / 1000) : 0;
   const mins = Math.floor(elapsed / 60), secs = elapsed % 60;
   const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
   const total = focusSet.length;
   const mastered = focusMasteredSet.size;
   const pct = Math.round((mastered / total) * 100);
-
   document.getElementById('foc-mastered-pct').textContent = pct + '% Mastered';
   document.getElementById('foc-results-sub').textContent = `${mastered} / ${total} words · ${timeStr}`;
-
-  // build status lists
   const hardWords = [], midWords = [], easyWords = [];
-  // dedupe focusSet in case of duplicates
   const seenWi = new Set();
   focusSet.forEach(wi => {
     if (seenWi.has(wi)) return;
@@ -1820,12 +1867,11 @@ function showFocusResults() {
     else if (s === 'mid') midWords.push(label);
     else hardWords.push(label);
   });
-
   const lists = document.getElementById('foc-result-lists');
   lists.innerHTML = '';
   [
     { title: '✓ Know it', arr: easyWords, cls: 'right' },
-    { title: '~ Kinda', arr: midWords, cls: '', titleColor: '#f0a060' },
+    { title: '~ Kinda',   arr: midWords,  cls: '', titleColor: '#f0a060' },
     { title: '✗ Struggled', arr: hardWords, cls: 'wrong' },
   ].forEach(({ title, arr, cls, titleColor }) => {
     const el = document.createElement('div');
@@ -1834,8 +1880,6 @@ function showFocusResults() {
       + (arr.length ? arr.map(w => `<div class="result-word">${w}</div>`).join('') : '<div class="result-word" style="color:var(--muted)">none</div>');
     lists.appendChild(el);
   });
-
-  // show download button only if there are hard words
   focusWrongIndices = hardWords.map(w => words.findIndex(wd => wd.word === w)).filter(i => i !== -1);
   document.getElementById('foc-dl-results-btn').style.display = focusWrongIndices.length > 0 ? 'inline-block' : 'none';
 }
@@ -1853,18 +1897,15 @@ function resetFocusSetup() {
   ctxFocus = 'all'; refreshWordListForMode();
 }
 
-
-
-
 // ── FONT THEMES ──
 const fontThemes = [
-  { name: 'Default',    display: 'Playfair Display', mono: 'IBM Plex Mono',       bg: '#0e0e0e', accent: '#c8f060', surface: '#1a1a1a', text: '#f0ede6', swatch: '#0e0e0e', label: 'Aa' },
-  { name: 'Garamond',   display: 'Cormorant Garamond', mono: 'IBM Plex Mono',     bg: '#1a1208', accent: '#d4a853', surface: '#251a0c', text: '#f5e8cc', swatch: '#1a1208', label: 'Gg' },
-  { name: 'Editorial',  display: 'DM Serif Display',  mono: 'Space Grotesk',      bg: '#f5f0e8', accent: '#1a1a1a', surface: '#ede6d8', text: '#1a1208', swatch: '#f5f0e8', label: 'Ed' },
-  { name: 'Fraunces',   display: 'Fraunces',          mono: 'IBM Plex Mono',      bg: '#0d1a2e', accent: '#7ec8f7', surface: '#142035', text: '#e0f0ff', swatch: '#0d1a2e', label: 'Fr' },
-  { name: 'Syne',       display: 'Syne',              mono: 'Space Grotesk',      bg: '#1a001a', accent: '#e040fb', surface: '#260026', text: '#f8e8ff', swatch: '#1a001a', label: 'Sy' },
-  { name: 'Crimson',    display: 'Crimson Pro',       mono: 'Josefin Sans',       bg: '#1a0808', accent: '#ff6b6b', surface: '#2a0e0e', text: '#ffe8e8', swatch: '#1a0808', label: 'Cr' },
-  { name: 'Josefin',    display: 'Josefin Sans',      mono: 'Space Grotesk',      bg: '#f0f4f8', accent: '#2d6a4f', surface: '#e0eae4', text: '#1a2e22', swatch: '#f0f4f8', label: 'Jo' },
+  { name: 'Default',   display: 'Playfair Display',   mono: 'IBM Plex Mono',   swatch: '#0e0e0e', accent: '#c8f060', text: '#f0ede6', label: 'Aa' },
+  { name: 'Garamond',  display: 'Cormorant Garamond',  mono: 'IBM Plex Mono',   swatch: '#1a1208', accent: '#d4a853', text: '#f5e8cc', label: 'Gg' },
+  { name: 'Editorial', display: 'DM Serif Display',    mono: 'Space Grotesk',   swatch: '#f5f0e8', accent: '#1a1a1a', text: '#1a1208', label: 'Ed' },
+  { name: 'Fraunces',  display: 'Fraunces',            mono: 'IBM Plex Mono',   swatch: '#0d1a2e', accent: '#7ec8f7', text: '#e0f0ff', label: 'Fr' },
+  { name: 'Syne',      display: 'Syne',                mono: 'Space Grotesk',   swatch: '#1a001a', accent: '#e040fb', text: '#f8e8ff', label: 'Sy' },
+  { name: 'Crimson',   display: 'Crimson Pro',         mono: 'Josefin Sans',    swatch: '#1a0808', accent: '#ff6b6b', text: '#ffe8e8', label: 'Cr' },
+  { name: 'Josefin',   display: 'Josefin Sans',        mono: 'Space Grotesk',   swatch: '#f0f4f8', accent: '#2d6a4f', text: '#1a2e22', label: 'Jo' },
 ];
 
 let activeFontTheme = localStorage.getItem('sat-font-theme') || null;
@@ -1872,8 +1913,8 @@ let activeFontTheme = localStorage.getItem('sat-font-theme') || null;
 function applyFontTheme(name) {
   const ft = name ? fontThemes.find(f => f.name === name) : null;
   if (ft) {
-    document.documentElement.style.setProperty('--font-display', "'" + ft.display + "', serif");
-    document.documentElement.style.setProperty('--font-mono', "'" + ft.mono + "', monospace");
+    document.documentElement.style.setProperty('--font-display', `'${ft.display}', serif`);
+    document.documentElement.style.setProperty('--font-mono', `'${ft.mono}', monospace`);
     activeFontTheme = name;
     localStorage.setItem('sat-font-theme', name);
   } else {
@@ -1901,8 +1942,8 @@ function buildFontThemeUI() {
     btn.dataset.name = ft.name;
     btn.style.background = ft.swatch;
     btn.style.color = ft.text;
-    btn.style.outline = '1.5px solid ' + ft.accent + '55';
-    btn.style.fontFamily = "'" + ft.display + "', serif";
+    btn.style.outline = `1.5px solid ${ft.accent}55`;
+    btn.style.fontFamily = `'${ft.display}', serif`;
     btn.textContent = ft.label;
     btn.onclick = () => applyFontTheme(ft.name === 'Default' ? null : ft.name);
     wrap.appendChild(lbl);
@@ -1911,33 +1952,27 @@ function buildFontThemeUI() {
   });
 }
 
-// restore font theme on load (preset first, then custom override)
+// Restore font on load
 (function() {
   const savedTheme = localStorage.getItem('sat-font-theme');
   if (savedTheme) applyFontTheme(savedTheme);
-  // custom fonts override preset — restore after
   const savedDisplay = localStorage.getItem('sat-custom-display-font');
   const savedMono    = localStorage.getItem('sat-custom-mono-font');
   if (savedDisplay) loadAndApplyCustomFont(savedDisplay, 'display', false);
-  if (savedMono)    loadAndApplyCustomFont(savedMono, 'mono', false);
+  if (savedMono)    loadAndApplyCustomFont(savedMono,    'mono',    false);
 })();
 
-
 // ── FONT SEARCH ──
-let _fontTarget = 'display'; // 'display' or 'mono'
+let _fontTarget = 'display';
 let _customDisplayFont = localStorage.getItem('sat-custom-display-font') || null;
-let _customMonoFont = localStorage.getItem('sat-custom-mono-font') || null;
-
-
+let _customMonoFont    = localStorage.getItem('sat-custom-mono-font')    || null;
 
 function setFontTarget(target) {
   _fontTarget = target;
   document.getElementById('ft-display-btn').classList.toggle('active', target === 'display');
-  document.getElementById('ft-mono-btn').classList.toggle('active', target === 'mono');
-  // re-render results with new target context
+  document.getElementById('ft-mono-btn').classList.toggle('active',    target === 'mono');
   const results = document.getElementById('font-results');
-  const items = results.querySelectorAll('.font-result-item');
-  items.forEach(item => {
+  results.querySelectorAll('.font-result-item').forEach(item => {
     const current = _fontTarget === 'display' ? _customDisplayFont : _customMonoFont;
     item.classList.toggle('active', item.dataset.font === current);
   });
@@ -1956,94 +1991,68 @@ async function searchFonts() {
   const query = document.getElementById('font-search-input').value.trim();
   const results = document.getElementById('font-results');
   if (!query) return;
-
   results.innerHTML = '<div class="font-search-status">Searching...</div>';
-
-  try {
-    // Use Google Fonts CSS API to get a list — we search by loading a curated list
-    // and filtering client-side, since the API key isn't needed for CSS loading
-    const url = 'https://www.googleapis.com/webfonts/v1/webfonts?key=AIzaSyDummy&sort=popularity';
-    // Fallback: use a static popular fonts list + the query as a direct load attempt
-    const popularFonts = [
-      'Roboto','Open Sans','Lato','Montserrat','Oswald','Source Sans Pro','Raleway',
-      'PT Sans','Merriweather','Nunito','Playfair Display','Ubuntu','Poppins','Mukti',
-      'Inconsolata','Noto Sans','Titillium Web','Libre Baskerville','Josefin Sans',
-      'Crimson Text','EB Garamond','Cormorant Garamond','DM Sans','DM Serif Display',
-      'Fraunces','Syne','Space Grotesk','Space Mono','Fira Code','JetBrains Mono',
-      'Source Code Pro','IBM Plex Mono','IBM Plex Sans','IBM Plex Serif',
-      'Libre Franklin','Work Sans','Karla','Inter','Manrope','Plus Jakarta Sans',
-      'Instrument Serif','Instrument Sans','Italiana','Cormorant','Cinzel',
-      'Spectral','Bitter','Domine','Vollkorn','Neuton','Cardo','Sorts Mill Goudy',
-      'Gilda Display','Poiret One','Comfortaa','Quicksand','Varela Round','Cabin',
-      'Exo 2','Oxanium','Orbitron','Chakra Petch','Secular One','Heebo','Rubik',
-      'Barlow','Barlow Condensed','Bebas Neue','Anton','Archivo','Archivo Black',
-      'Righteous','Philosopher','Quando','Coustard','Rokkitt','Arvo','Zilla Slab'
-    ];
-
-    const q = query.toLowerCase();
-    const matches = popularFonts.filter(f => f.toLowerCase().includes(q));
-
-    // Always include the typed query as first result (title-cased) if not already in list
-    const titleCased = query.trim().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-    const alreadyIn = matches.some(f => f.toLowerCase() === q);
-    if (!alreadyIn) matches.unshift(titleCased);
-
-    results.innerHTML = '';
-    const current = _fontTarget === 'display' ? _customDisplayFont : _customMonoFont;
-
-    matches.slice(0, 12).forEach((fontName, i) => {
-      const isExact = i === 0 && !alreadyIn; // the user-typed one
-      // Load font preview via Google Fonts
-      const linkId = 'gf-' + fontName.replace(/\s+/g, '-');
-      if (!document.getElementById(linkId)) {
-        const link = document.createElement('link');
-        link.id = linkId;
-        link.rel = 'stylesheet';
-        link.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(fontName) + ':wght@400;700&display=swap';
-        document.head.appendChild(link);
-      }
-
-      const item = document.createElement('div');
-      item.className = 'font-result-item' + (fontName === current ? ' active' : '');
-      item.dataset.font = fontName;
-      const sublabel = isExact ? 'Try this font →' : 'Click to apply';
-      item.innerHTML = '<span class="font-result-name" style="font-family:&quot;' + fontName + '&quot;,serif;">' + fontName + '</span>'
-        + '<span class="font-result-apply" id="apply-lbl-' + i + '">' + sublabel + '</span>';
-      item.onclick = () => applyCustomFontWithCheck(fontName, item);
-      results.appendChild(item);
-    });
-  } catch(e) {
-    results.innerHTML = '<div class="font-search-status">Search failed. Check your connection.</div>';
-  }
+  const popularFonts = [
+    'Roboto','Open Sans','Lato','Montserrat','Oswald','Source Sans Pro','Raleway',
+    'PT Sans','Merriweather','Nunito','Playfair Display','Ubuntu','Poppins',
+    'Inconsolata','Noto Sans','Titillium Web','Libre Baskerville','Josefin Sans',
+    'Crimson Text','EB Garamond','Cormorant Garamond','DM Sans','DM Serif Display',
+    'Fraunces','Syne','Space Grotesk','Space Mono','Fira Code','JetBrains Mono',
+    'Source Code Pro','IBM Plex Mono','IBM Plex Sans','IBM Plex Serif',
+    'Libre Franklin','Work Sans','Karla','Inter','Manrope','Plus Jakarta Sans',
+    'Instrument Serif','Instrument Sans','Italiana','Cormorant','Cinzel',
+    'Spectral','Bitter','Domine','Vollkorn','Neuton','Cardo','Sorts Mill Goudy',
+    'Gilda Display','Poiret One','Comfortaa','Quicksand','Varela Round','Cabin',
+    'Exo 2','Oxanium','Orbitron','Chakra Petch','Secular One','Heebo','Rubik',
+    'Barlow','Barlow Condensed','Bebas Neue','Anton','Archivo','Archivo Black',
+    'Righteous','Philosopher','Quando','Coustard','Rokkitt','Arvo','Zilla Slab'
+  ];
+  const q = query.toLowerCase();
+  const matches = popularFonts.filter(f => f.toLowerCase().includes(q));
+  const titleCased = query.trim().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const alreadyIn = matches.some(f => f.toLowerCase() === q);
+  if (!alreadyIn) matches.unshift(titleCased);
+  results.innerHTML = '';
+  const current = _fontTarget === 'display' ? _customDisplayFont : _customMonoFont;
+  matches.slice(0, 12).forEach((fontName, i) => {
+    const isExact = i === 0 && !alreadyIn;
+    const linkId = 'gf-' + fontName.replace(/\s+/g, '-');
+    if (!document.getElementById(linkId)) {
+      const link = document.createElement('link');
+      link.id = linkId; link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(fontName) + ':wght@400;700&display=swap';
+      document.head.appendChild(link);
+    }
+    const item = document.createElement('div');
+    item.className = 'font-result-item' + (fontName === current ? ' active' : '');
+    item.dataset.font = fontName;
+    const sublabel = isExact ? 'Try this font →' : 'Click to apply';
+    item.innerHTML = `<span class="font-result-name" style="font-family:'${fontName}',serif;">${fontName}</span>`
+      + `<span class="font-result-apply" id="apply-lbl-${i}">${sublabel}</span>`;
+    item.onclick = () => applyCustomFontWithCheck(fontName, item);
+    results.appendChild(item);
+  });
 }
 
 async function applyCustomFontWithCheck(fontName, itemEl) {
   const lbl = itemEl.querySelector('.font-result-apply');
   if (lbl) { lbl.textContent = 'Checking...'; lbl.style.color = ''; }
-
-  // Load the Google Fonts stylesheet
   const linkId = 'gf-' + fontName.replace(/\s+/g, '-');
   let link = document.getElementById(linkId);
   if (!link) {
     link = document.createElement('link');
-    link.id = linkId;
-    link.rel = 'stylesheet';
+    link.id = linkId; link.rel = 'stylesheet';
     link.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(fontName) + ':wght@400;700&display=swap';
     document.head.appendChild(link);
   }
-
-  // Wait for stylesheet to load, then check if the font face actually exists
-  await new Promise(res => setTimeout(res, 800)); // give browser time to parse
-  const loaded = document.fonts.check('16px "' + fontName + '"');
-
+  await new Promise(res => setTimeout(res, 800));
+  const loaded = document.fonts.check(`16px "${fontName}"`);
   if (!loaded) {
-    // Remove the failed link tag so it doesn't clutter
     link.remove();
     if (lbl) { lbl.textContent = '✕ Font not found'; lbl.style.color = '#ff5555'; }
     setTimeout(() => { if (lbl) { lbl.textContent = 'Try this font →'; lbl.style.color = ''; } }, 2000);
-    return; // do NOT apply
+    return;
   }
-
   applyCustomFont(fontName);
   if (lbl) { lbl.textContent = '✓ Applied'; lbl.style.color = 'var(--accent)'; }
   setTimeout(() => { if (lbl) { lbl.textContent = 'Click to apply'; lbl.style.color = ''; } }, 1500);
@@ -2051,32 +2060,28 @@ async function applyCustomFontWithCheck(fontName, itemEl) {
 
 function applyCustomFont(fontName) {
   loadAndApplyCustomFont(fontName, _fontTarget, true);
-  // update active state
   document.querySelectorAll('.font-result-item').forEach(item => {
     item.classList.toggle('active', item.dataset.font === fontName);
   });
 }
 
 function loadAndApplyCustomFont(fontName, target, save) {
-  // load via Google Fonts if not already loaded
   const linkId = 'gf-' + fontName.replace(/\s+/g,'-');
   if (!document.getElementById(linkId)) {
     const link = document.createElement('link');
-    link.id = linkId;
-    link.rel = 'stylesheet';
+    link.id = linkId; link.rel = 'stylesheet';
     link.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(fontName) + ':wght@400;700&display=swap';
     document.head.appendChild(link);
   }
   if (target === 'display') {
-    document.documentElement.style.setProperty('--font-display', "'" + fontName + "', serif");
+    document.documentElement.style.setProperty('--font-display', `'${fontName}', serif`);
     _customDisplayFont = fontName;
     if (save) localStorage.setItem('sat-custom-display-font', fontName);
   } else {
-    document.documentElement.style.setProperty('--font-mono', "'" + fontName + "', monospace");
+    document.documentElement.style.setProperty('--font-mono', `'${fontName}', monospace`);
     _customMonoFont = fontName;
     if (save) localStorage.setItem('sat-custom-mono-font', fontName);
   }
-  // deactivate any preset font theme since we're now using custom
   activeFontTheme = null;
   localStorage.removeItem('sat-font-theme');
   document.querySelectorAll('.font-theme-btn').forEach(b => b.classList.remove('active'));
@@ -2087,13 +2092,11 @@ function clearCustomFonts() {
   _customMonoFont = null;
   localStorage.removeItem('sat-custom-display-font');
   localStorage.removeItem('sat-custom-mono-font');
-  // restore to active preset theme fonts, or default if none
   const ft = activeFontTheme ? fontThemes.find(f => f.name === activeFontTheme) : null;
-  document.documentElement.style.setProperty('--font-display', ft ? ("'" + ft.display + "', serif") : "'Playfair Display', serif");
-  document.documentElement.style.setProperty('--font-mono', ft ? ("'" + ft.mono + "', monospace") : "'IBM Plex Mono', monospace");
+  document.documentElement.style.setProperty('--font-display', ft ? `'${ft.display}', serif`  : "'Playfair Display', serif");
+  document.documentElement.style.setProperty('--font-mono',    ft ? `'${ft.mono}', monospace` : "'IBM Plex Mono', monospace");
   document.querySelectorAll('.font-result-item').forEach(i => i.classList.remove('active'));
 }
-
 
 // ── BOOKMARKS ──
 function getBookmarks() {
@@ -2128,37 +2131,9 @@ function toggleBookmarkFilter() {
   renderWordList();
 }
 
-// Quiz/Focus source: 'all' or 'bookmarked'
-let _quizSource  = 'all';
-let _focusSource = 'all';
-function selectQuizSource(src) {
-  _quizSource = src;
-  document.getElementById('qsrc-all').classList.toggle('active', src === 'all');
-  document.getElementById('qsrc-bookmarked').classList.toggle('active', src === 'bookmarked');
-}
-function selectFocusSource(src) {
-  _focusSource = src;
-  document.getElementById('fsrc-all').classList.toggle('active', src === 'all');
-  document.getElementById('fsrc-bookmarked').classList.toggle('active', src === 'bookmarked');
-  const msg = document.getElementById('focus-setup-msg');
-  if (msg) msg.innerHTML = src === 'bookmarked'
-    ? 'Pick a number of bookmarked words to study.<br>Bookmarked words will be pulled randomly.'
-    : 'Pick a number of words to study.<br>A random set will be pulled from your list.';
-}
-// ── KEYBOARD NAVIGATION ──
-document.addEventListener('keydown', function(e) {
-  // only when flash mode is active and not typing in an input
-  if (activeMode !== 'flash') return;
-  const tag = document.activeElement && document.activeElement.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); nextCard(); }
-  else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prevCard(); }
-  else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flipCard(); }
-});
-
 // ── TABS ──
 function switchMode(mode) {
-  stopWordTimer(); // always stop timer on any mode switch
+  stopWordTimer();
   document.getElementById('analytics-view').style.display = 'none';
   document.getElementById('shuffle-btn').style.display = '';
   document.getElementById('add-section').style.display = '';
@@ -2171,7 +2146,6 @@ function switchMode(mode) {
     document.getElementById('shuffle-btn').style.display = 'none';
     document.getElementById('add-section').style.display = 'none';
     activeMode = 'analytics';
-    // ensure words reflects current group before rendering list
     const _ag = getActiveGroup();
     if (_ag) words = _ag.words;
     renderAnalytics();
@@ -2185,16 +2159,14 @@ function switchMode(mode) {
   activeMode = mode;
   refreshWordListForMode();
   updateShuffleBtn();
-  if (mode==='flash') {
-    showCard(); // restart timer on current card
-  }
-  if (mode==='quiz') {
+  if (mode === 'flash') showCard();
+  if (mode === 'quiz') {
     if (document.getElementById('quiz-active').style.display === 'none' &&
         document.getElementById('quiz-results').style.display === 'none') {
       showQuizSetup();
     }
   }
-  if (mode==='focus' && !focusFromQuiz) {
+  if (mode === 'focus' && !focusFromQuiz) {
     if (document.getElementById('focus-card-wrap').style.display === 'none' &&
         document.getElementById('focus-results').style.display === 'none') {
       resetFocusSetup();
@@ -2202,16 +2174,6 @@ function switchMode(mode) {
   }
 }
 
-
-// ── ARROW KEY NAVIGATION ──
-document.addEventListener('keydown', function(e) {
-  if (activeMode !== 'flash') return;
-  // ignore if user is typing in an input
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  if (e.key === 'ArrowRight') { e.preventDefault(); nextCard(); }
-  else if (e.key === 'ArrowLeft') { e.preventDefault(); prevCard(); }
-  else if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); flipCard(); }
-});
 // ── ADD WORDS ──
 function addWord() {
   const w = document.getElementById('word-input').value.trim();
@@ -2261,14 +2223,15 @@ function resolveImport(merge) {
   saveWords(); showCard(); renderWordList();
 }
 
+// ── DELETE / UNDO ──
 let lastDeletedWord = null;
+
 function showFocusDoneToast() {
   const t = document.getElementById('undo-toast');
   if (!t) return;
   clearTimeout(window._undoTimer);
   const span = t.querySelector('span');
   const btn  = t.querySelector('button');
-  const prevText = span.textContent;
   span.textContent = 'Start a new session to delete words';
   btn.style.display = 'none';
   t.style.opacity = '1';
@@ -2281,6 +2244,7 @@ function showFocusDoneToast() {
     setTimeout(() => { span.textContent = 'Word deleted'; btn.style.display = ''; }, 250);
   }, 3000);
 }
+
 function deleteWord(idx) {
   if (activeMode === 'focus' && focusSessionDone) { showFocusDoneToast(); return; }
   const _existingAnalytic = (getWordAnalytics()[activeGroupId] || {})[words[idx].word] || null;
@@ -2290,18 +2254,16 @@ function deleteWord(idx) {
   fcOrder = words.map((_,i)=>i);
   fcIdx = Math.min(fcIdx, Math.max(0, words.length-1));
   saveWords(); showCard(); renderWordList();
-  // update badge on the group card if groups page is open
   const gp = document.getElementById('groups-page');
   if (gp && gp.classList.contains('active')) renderGroupsPage();
-  // refresh analytics immediately if visible
   if (activeMode === 'analytics') renderAnalytics();
   showUndoToast();
 }
+
 function undoDelete() {
   if (!lastDeletedWord) return;
   const { word, idx } = lastDeletedWord;
   words.splice(Math.min(idx, words.length), 0, word);
-  // restore analytic data for the word (lastDeletedWord.analytics saved below)
   if (lastDeletedWord.analytics) {
     const data = getWordAnalytics();
     if (!data[activeGroupId]) data[activeGroupId] = {};
@@ -2313,6 +2275,7 @@ function undoDelete() {
   saveWords(); showCard(); renderWordList();
   hideUndoToast();
 }
+
 function showUndoToast() {
   const t = document.getElementById('undo-toast');
   if (!t) return;
@@ -2322,6 +2285,7 @@ function showUndoToast() {
   t.style.pointerEvents = 'auto';
   window._undoTimer = setTimeout(hideUndoToast, 5000);
 }
+
 function hideUndoToast() {
   const t = document.getElementById('undo-toast');
   if (!t) return;
@@ -2331,16 +2295,16 @@ function hideUndoToast() {
   lastDeletedWord = null;
 }
 
+// ── WORD LIST ──
 function renderWordList() {
-  const list = document.getElementById('word-list');
+  const list  = document.getElementById('word-list');
   const count = document.getElementById('word-count');
   if (!list) return;
   list.innerHTML = '';
   const bm = getBookmarks();
-  const ctx = activeMode === 'quiz' ? ctxQuiz : activeMode === 'focus' ? ctxFocus : ctxFlash;
+  const ctx   = activeMode === 'quiz' ? ctxQuiz : activeMode === 'focus' ? ctxFocus : ctxFlash;
   const isAll = ctx === 'all';
   let indices = isAll ? words.map((_,i)=>i) : ctx;
-  // apply bookmark filter
   if (_bmFilterActive) indices = indices.filter(i => words[i] && bm[words[i].word]);
   if (count) count.textContent = indices.length;
   updateBookmarkCount();
@@ -2358,7 +2322,7 @@ function renderWordList() {
         <span class="word-item-name">${w.word}</span>
         <span class="word-item-def">${w.definition}</span>
       </div>
-      <button class="bm-icon${isBookmarked ? ' active' : ''}" onclick="event.stopPropagation();toggleBookmark('${w.word.replace(/'/g,"\'")}')" title="Bookmark">⊙</button>
+      <button class="bm-icon${isBookmarked ? ' active' : ''}" onclick="event.stopPropagation();toggleBookmark('${w.word.replace(/'/g, "\\'")}');" title="Bookmark">⊙</button>
       ${delBtn}
     `;
     list.appendChild(item);
@@ -2370,30 +2334,21 @@ function removeFromSet(posInContext) {
   if (curCtx === 'all') return;
   const removedIdx = curCtx[posInContext];
   const newCtx = curCtx.filter((_, i) => i !== posInContext);
-  if (activeMode === 'quiz')  ctxQuiz  = newCtx;
+  if (activeMode === 'quiz')       ctxQuiz  = newCtx;
   else if (activeMode === 'focus') ctxFocus = newCtx;
-  else ctxFlash = newCtx;
-
-  // remove from quiz pool and sync
+  else                             ctxFlash = newCtx;
   if (quizPool.length && document.getElementById('quiz-active').style.display !== 'none') {
-    quizPool = quizPool.filter(i => i !== removedIdx);
+    quizPool  = quizPool.filter(i => i !== removedIdx);
     quizAsked = quizAsked.filter(i => i !== removedIdx);
     quizLimit = quizPool.length;
     if (quizPool.length === 0) { showResults(); }
     else if (quizCorrectIdx === removedIdx) { nextQuestion(); }
-    else {
-      // update counter label without changing the question
-      const t = quizPool.length;
-      document.getElementById('q-progress').textContent = `${quizQ+1} / ${t}`;
-    }
+    else { document.getElementById('q-progress').textContent = `${quizQ+1} / ${quizPool.length}`; }
   }
-
-  // remove from focus sets and always advance card
   if (document.getElementById('focus-card-wrap') && document.getElementById('focus-card-wrap').style.display !== 'none') {
     focusSet = focusSet.filter(i => i !== removedIdx);
     focusMasteredSet.delete(removedIdx);
     focusQueue = focusQueue.filter(q => q.wordIdx !== removedIdx);
-    // advance focusAttempt past any now-stale entries
     while (focusAttempt < focusQueue.length && focusMasteredSet.has(focusQueue[focusAttempt].wordIdx)) {
       focusAttempt++;
     }
@@ -2403,7 +2358,6 @@ function removeFromSet(posInContext) {
       showFocusCard();
     }
   }
-
   renderWordList();
 }
 
@@ -2415,11 +2369,13 @@ applyTheme();
 buildBgPresetUI();
 buildFontThemeUI();
 updateWordmarkColor();
-applyGradient();
 showCard();
 renderWordList();
-const _lbl = document.getElementById("active-group-label"); if(_lbl) _lbl.textContent = getActiveGroup().name;
+updateBookmarkCount();
+const _lbl = document.getElementById('active-group-label');
+if (_lbl) _lbl.textContent = (getActiveGroup() || { name: '' }).name;
 showHome();
+
 </script>
 
 <!-- IMPORT MODAL -->
@@ -2433,11 +2389,6 @@ showHome();
     </div>
   </div>
 </div>
-
-
-
-
-
 
 <div class="font-search-overlay" id="font-search-overlay" onclick="if(event.target===this)closeFontSearch()">
   <div class="font-search-modal">
@@ -2459,6 +2410,7 @@ showHome();
     </div>
   </div>
 </div>
+
 <div class="modal-overlay" id="reset-all-modal">
   <div class="modal" style="max-width:380px;text-align:center;">
     <div class="modal-title" style="color:#ff5555;">Reset All Data</div>
@@ -2469,11 +2421,11 @@ showHome();
     </div>
   </div>
 </div>
+
 <div class="modal-overlay" id="new-group-modal">
   <div class="modal" style="max-width:420px;text-align:left;">
     <div class="modal-title" style="margin-bottom:6px;">New Group</div>
     <div class="modal-msg" style="margin-bottom:20px;">Give your group a name, then choose how to start it.</div>
-
     <input id="new-group-name-input" type="text" placeholder="Group name…" style="
       width:100%; box-sizing:border-box;
       background:var(--bg); border:1px solid var(--border); border-radius:10px;
@@ -2481,7 +2433,6 @@ showHome();
       font-family:var(--font-mono); outline:none; margin-bottom:18px;
       transition:border-color 0.15s;
     " oninput="this.style.borderColor='var(--accent)'" />
-
     <div id="ngm-type-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;">
       <button id="ngm-preset-btn" onclick="selectNewGroupType('preset')" style="
         background:var(--surface); border:1.5px solid var(--border); border-radius:14px;
@@ -2502,7 +2453,6 @@ showHome();
         <div style="font-size:0.68rem;color:var(--muted);margin-top:3px;">Start from scratch</div>
       </button>
     </div>
-
     <div class="modal-btns">
       <button class="btn" onclick="confirmNewGroup()" style="background:var(--accent);color:#000;border-color:var(--accent);flex:1;">Create Group</button>
       <button class="btn" onclick="closeNewGroupModal()">Cancel</button>
@@ -2565,13 +2515,14 @@ document.addEventListener('keydown', e => {
     </div>
   </div>
 </div>
+
 <div id="undo-toast" style="
   position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px);
   background:var(--surface); border:1px solid var(--accent); border-radius:10px;
   padding:10px 18px; display:flex; align-items:center; gap:12px;
   font-size:0.82rem; color:var(--text); box-shadow:0 4px 20px #0006;
   opacity:0; transition:opacity 0.2s, transform 0.2s; pointer-events:none; z-index:9999;
-" id="undo-toast">
+">
   <span>Word deleted</span>
   <button onclick="undoDelete()" style="
     background:var(--accent); color:#000; border:none; border-radius:6px;
