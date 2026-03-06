@@ -1895,21 +1895,18 @@ async function searchFonts() {
     const q = query.toLowerCase();
     const matches = popularFonts.filter(f => f.toLowerCase().includes(q));
 
-    // Always include the exact query as first result if it's not in the list
-    const exact = popularFonts.find(f => f.toLowerCase() === q);
-    if (!exact && query.length > 1) matches.unshift(query.split(' ').map(w => w[0].toUpperCase() + w.slice(1)).join(' '));
-
-    if (matches.length === 0) {
-      results.innerHTML = '<div class="font-search-status">No fonts found. Try a different search.</div>';
-      return;
-    }
+    // Always include the typed query as first result (title-cased) if not already in list
+    const titleCased = query.trim().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    const alreadyIn = matches.some(f => f.toLowerCase() === q);
+    if (!alreadyIn) matches.unshift(titleCased);
 
     results.innerHTML = '';
     const current = _fontTarget === 'display' ? _customDisplayFont : _customMonoFont;
 
-    matches.slice(0, 12).forEach(fontName => {
+    matches.slice(0, 12).forEach((fontName, i) => {
+      const isExact = i === 0 && !alreadyIn; // the user-typed one
       // Load font preview via Google Fonts
-      const linkId = 'gf-' + fontName.replace(/\s+/g,'-');
+      const linkId = 'gf-' + fontName.replace(/\s+/g, '-');
       if (!document.getElementById(linkId)) {
         const link = document.createElement('link');
         link.id = linkId;
@@ -1921,8 +1918,9 @@ async function searchFonts() {
       const item = document.createElement('div');
       item.className = 'font-result-item' + (fontName === current ? ' active' : '');
       item.dataset.font = fontName;
+      const sublabel = isExact ? 'Try this font' : 'Click to apply';
       item.innerHTML = '<span class="font-result-name" style="font-family:&quot;' + fontName + '&quot;,serif;">' + fontName + '</span>'
-        + '<span class="font-result-apply">Click to apply</span>';
+        + '<span class="font-result-apply">' + sublabel + '</span>';
       item.onclick = () => applyCustomFont(fontName);
       results.appendChild(item);
     });
