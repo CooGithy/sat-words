@@ -220,6 +220,29 @@
   .analytics-stat-lbl { font-size: 0.58rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 3px; }
 
   /* FONT THEMES */
+  .font-search-btn { background: none; border: 1px solid var(--border); color: var(--muted); font-family: var(--font-mono); font-size: 0.65rem; padding: 5px 10px; border-radius: 8px; cursor: pointer; transition: all 0.15s; width: 100%; margin-top: 8px; }
+  .font-search-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .font-search-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: none; align-items: center; justify-content: center; }
+  .font-search-overlay.open { display: flex; }
+  .font-search-modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; width: 420px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column; gap: 14px; }
+  .font-search-title { font-family: var(--font-display); font-size: 1.1rem; color: var(--text); }
+  .font-search-input-wrap { display: flex; gap: 8px; }
+  .font-search-input { flex: 1; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: var(--font-mono); font-size: 0.78rem; outline: none; transition: border-color 0.15s; }
+  .font-search-input:focus { border-color: var(--accent); }
+  .font-search-go { background: var(--accent); color: #000; border: none; border-radius: 10px; padding: 8px 16px; font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .font-results { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; max-height: 380px; }
+  .font-result-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; transition: border-color 0.15s; }
+  .font-result-item:hover { border-color: var(--accent); }
+  .font-result-item.active { border-color: var(--accent); background: rgba(255,255,255,0.04); }
+  .font-result-name { font-size: 1rem; color: var(--text); }
+  .font-result-apply { font-family: var(--font-mono); font-size: 0.6rem; color: var(--muted); }
+  .font-result-item:hover .font-result-apply { color: var(--accent); }
+  .font-search-status { font-family: var(--font-mono); font-size: 0.65rem; color: var(--muted); text-align: center; padding: 20px 0; }
+  .font-search-footer { display: flex; gap: 8px; }
+  .font-search-footer button { flex: 1; }
+  .font-font-target { display: flex; gap: 8px; }
+  .font-target-btn { flex: 1; padding: 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; font-family: var(--font-mono); font-size: 0.62rem; color: var(--muted); cursor: pointer; transition: all 0.15s; text-align: center; }
+  .font-target-btn.active { border-color: var(--accent); color: var(--accent); }
   .font-theme-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 8px; }
   .font-theme-wrap { position: relative; }
   .font-theme-btn { width: 100%; aspect-ratio: 1; border-radius: 8px; border: 2px solid transparent; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600; padding: 0; }
@@ -365,6 +388,7 @@
   <hr class="divider">
   <div class="s-title">Font & Style</div>
   <div class="font-theme-grid" id="font-theme-grid"></div>
+  <button class="font-search-btn" onclick="openFontSearch()">⌕ Search Google Fonts</button>
   <hr class="divider">
   <div class="s-title" style="color:#ff5555;">Danger Zone</div>
   <button class="theme-btn" onclick="confirmResetAllData()" style="border-color:#ff5555;color:#ff5555;width:100%;">↺ Reset All Data</button>
@@ -684,12 +708,11 @@ function renderAnalytics() {
 }
 function enterApp() {
   const hp = document.getElementById('home-page');
-  if (hp.style.display !== 'none') {
-    hp.classList.add('hiding');
-    setTimeout(() => { hp.style.display = 'none'; hideGroupsPage(); showGroupsPage(); }, 500);
-  } else {
-    hideGroupsPage();
-  }
+  const wm = document.getElementById('sat-wordmark');
+  if (wm) wm.style.display = 'none';
+  hp.style.display = 'none';
+  hp.classList.remove('hiding');
+  showGroupsPage();
 }
 
 function showHome() {
@@ -867,7 +890,8 @@ function closeResetAllModal() {
 function doResetAllData() {
   const keys = ['sat-groups','sat-active-group','sat-words','sat-theme2','sat-bg-preset',
                  'sat-stats','sat-word-analytics','sat-passages-used','sat-reading-unlocked',
-                 'sat-grad','sat-grad-on','sat-app-version','sat-font-theme'];
+                 'sat-grad','sat-grad-on','sat-app-version','sat-font-theme',
+                 'sat-custom-display-font','sat-custom-mono-font'];
   keys.forEach(k => localStorage.removeItem(k));
   closeResetAllModal();
   // Re-init state
@@ -1806,6 +1830,150 @@ function buildFontThemeUI() {
   if (saved) applyFontTheme(saved);
 })();
 
+
+// ── FONT SEARCH ──
+let _fontTarget = 'display'; // 'display' or 'mono'
+let _customDisplayFont = localStorage.getItem('sat-custom-display-font') || null;
+let _customMonoFont = localStorage.getItem('sat-custom-mono-font') || null;
+
+// restore custom fonts on load
+(function() {
+  if (_customDisplayFont) loadAndApplyCustomFont(_customDisplayFont, 'display', false);
+  if (_customMonoFont)    loadAndApplyCustomFont(_customMonoFont, 'mono', false);
+})();
+
+function setFontTarget(target) {
+  _fontTarget = target;
+  document.getElementById('ft-display-btn').classList.toggle('active', target === 'display');
+  document.getElementById('ft-mono-btn').classList.toggle('active', target === 'mono');
+  // re-render results with new target context
+  const results = document.getElementById('font-results');
+  const items = results.querySelectorAll('.font-result-item');
+  items.forEach(item => {
+    const current = _fontTarget === 'display' ? _customDisplayFont : _customMonoFont;
+    item.classList.toggle('active', item.dataset.font === current);
+  });
+}
+
+function openFontSearch() {
+  document.getElementById('font-search-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('font-search-input').focus(), 80);
+}
+
+function closeFontSearch() {
+  document.getElementById('font-search-overlay').classList.remove('open');
+}
+
+async function searchFonts() {
+  const query = document.getElementById('font-search-input').value.trim();
+  const results = document.getElementById('font-results');
+  if (!query) return;
+
+  results.innerHTML = '<div class="font-search-status">Searching...</div>';
+
+  try {
+    // Use Google Fonts CSS API to get a list — we search by loading a curated list
+    // and filtering client-side, since the API key isn't needed for CSS loading
+    const url = 'https://www.googleapis.com/webfonts/v1/webfonts?key=AIzaSyDummy&sort=popularity';
+    // Fallback: use a static popular fonts list + the query as a direct load attempt
+    const popularFonts = [
+      'Roboto','Open Sans','Lato','Montserrat','Oswald','Source Sans Pro','Raleway',
+      'PT Sans','Merriweather','Nunito','Playfair Display','Ubuntu','Poppins','Mukti',
+      'Inconsolata','Noto Sans','Titillium Web','Libre Baskerville','Josefin Sans',
+      'Crimson Text','EB Garamond','Cormorant Garamond','DM Sans','DM Serif Display',
+      'Fraunces','Syne','Space Grotesk','Space Mono','Fira Code','JetBrains Mono',
+      'Source Code Pro','IBM Plex Mono','IBM Plex Sans','IBM Plex Serif',
+      'Libre Franklin','Work Sans','Karla','Inter','Manrope','Plus Jakarta Sans',
+      'Instrument Serif','Instrument Sans','Italiana','Cormorant','Cinzel',
+      'Spectral','Bitter','Domine','Vollkorn','Neuton','Cardo','Sorts Mill Goudy',
+      'Gilda Display','Poiret One','Comfortaa','Quicksand','Varela Round','Cabin',
+      'Exo 2','Oxanium','Orbitron','Chakra Petch','Secular One','Heebo','Rubik',
+      'Barlow','Barlow Condensed','Bebas Neue','Anton','Archivo','Archivo Black',
+      'Righteous','Philosopher','Quando','Coustard','Rokkitt','Arvo','Zilla Slab'
+    ];
+
+    const q = query.toLowerCase();
+    const matches = popularFonts.filter(f => f.toLowerCase().includes(q));
+
+    // Always include the exact query as first result if it's not in the list
+    const exact = popularFonts.find(f => f.toLowerCase() === q);
+    if (!exact && query.length > 1) matches.unshift(query.split(' ').map(w => w[0].toUpperCase() + w.slice(1)).join(' '));
+
+    if (matches.length === 0) {
+      results.innerHTML = '<div class="font-search-status">No fonts found. Try a different search.</div>';
+      return;
+    }
+
+    results.innerHTML = '';
+    const current = _fontTarget === 'display' ? _customDisplayFont : _customMonoFont;
+
+    matches.slice(0, 12).forEach(fontName => {
+      // Load font preview via Google Fonts
+      const linkId = 'gf-' + fontName.replace(/\s+/g,'-');
+      if (!document.getElementById(linkId)) {
+        const link = document.createElement('link');
+        link.id = linkId;
+        link.rel = 'stylesheet';
+        link.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(fontName) + ':wght@400;700&display=swap';
+        document.head.appendChild(link);
+      }
+
+      const item = document.createElement('div');
+      item.className = 'font-result-item' + (fontName === current ? ' active' : '');
+      item.dataset.font = fontName;
+      item.innerHTML = '<span class="font-result-name" style="font-family:'' + fontName + '',serif;">' + fontName + '</span>'
+        + '<span class="font-result-apply">Click to apply</span>';
+      item.onclick = () => applyCustomFont(fontName);
+      results.appendChild(item);
+    });
+  } catch(e) {
+    results.innerHTML = '<div class="font-search-status">Search failed. Check your connection.</div>';
+  }
+}
+
+function applyCustomFont(fontName) {
+  loadAndApplyCustomFont(fontName, _fontTarget, true);
+  // update active state
+  document.querySelectorAll('.font-result-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.font === fontName);
+  });
+}
+
+function loadAndApplyCustomFont(fontName, target, save) {
+  // load via Google Fonts if not already loaded
+  const linkId = 'gf-' + fontName.replace(/\s+/g,'-');
+  if (!document.getElementById(linkId)) {
+    const link = document.createElement('link');
+    link.id = linkId;
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(fontName) + ':wght@400;700&display=swap';
+    document.head.appendChild(link);
+  }
+  if (target === 'display') {
+    document.documentElement.style.setProperty('--font-display', "'" + fontName + "', serif");
+    _customDisplayFont = fontName;
+    if (save) localStorage.setItem('sat-custom-display-font', fontName);
+  } else {
+    document.documentElement.style.setProperty('--font-mono', "'" + fontName + "', monospace");
+    _customMonoFont = fontName;
+    if (save) localStorage.setItem('sat-custom-mono-font', fontName);
+  }
+  // deactivate any preset font theme since we're now using custom
+  activeFontTheme = null;
+  localStorage.removeItem('sat-font-theme');
+  document.querySelectorAll('.font-theme-btn').forEach(b => b.classList.remove('active'));
+}
+
+function clearCustomFonts() {
+  _customDisplayFont = null;
+  _customMonoFont = null;
+  localStorage.removeItem('sat-custom-display-font');
+  localStorage.removeItem('sat-custom-mono-font');
+  document.documentElement.style.setProperty('--font-display', "'Playfair Display', serif");
+  document.documentElement.style.setProperty('--font-mono', "'IBM Plex Mono', monospace");
+  document.querySelectorAll('.font-result-item').forEach(i => i.classList.remove('active'));
+}
+
 // ── TABS ──
 function switchMode(mode) {
   stopWordTimer(); // always stop timer on any mode switch
@@ -2072,6 +2240,27 @@ showHome();
 
 
 
+
+<div class="font-search-overlay" id="font-search-overlay" onclick="if(event.target===this)closeFontSearch()">
+  <div class="font-search-modal">
+    <div class="font-search-title">Search Google Fonts</div>
+    <div class="font-font-target">
+      <button class="font-target-btn active" id="ft-display-btn" onclick="setFontTarget('display')">Display / Heading</button>
+      <button class="font-target-btn" id="ft-mono-btn" onclick="setFontTarget('mono')">Body / Mono</button>
+    </div>
+    <div class="font-search-input-wrap">
+      <input class="font-search-input" id="font-search-input" placeholder="e.g. Roboto, Merriweather..." onkeydown="if(event.key==='Enter')searchFonts()" />
+      <button class="font-search-go" onclick="searchFonts()">Search</button>
+    </div>
+    <div class="font-results" id="font-results">
+      <div class="font-search-status">Search for a font above to preview it</div>
+    </div>
+    <div class="font-search-footer">
+      <button class="btn" onclick="closeFontSearch()">Done</button>
+      <button class="theme-btn" onclick="clearCustomFonts()" style="font-size:0.65rem;">↺ Reset to Default</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="reset-all-modal">
   <div class="modal" style="max-width:380px;text-align:center;">
     <div class="modal-title" style="color:#ff5555;">Reset All Data</div>
