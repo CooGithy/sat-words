@@ -841,6 +841,9 @@ let _fontTarget = 'display';
 let _fcoOpen = false;
 let pendingImportData = null;
 let lastDeletedWord = null;
+let activeFontTheme = null;
+let _customDisplayFont = null;
+let _customMonoFont = null;
 
 // ── STATS ──
 let appStats = JSON.parse(localStorage.getItem('sat-stats') || '{"quizzesTaken":0,"bestScore":0}');
@@ -3088,7 +3091,7 @@ const fontThemes = [
   { name: 'Josefin',   display: 'Josefin Sans',        mono: 'Space Grotesk',   swatch: '#f0f4f8', accent: '#2d6a4f', text: '#1a2e22', label: 'Jo' },
 ];
 
-let activeFontTheme = localStorage.getItem('sat-font-theme') || null;
+activeFontTheme = localStorage.getItem('sat-font-theme') || null;
 
 function applyFontTheme(name) {
   const ft = name ? fontThemes.find(f => f.name === name) : null;
@@ -3143,8 +3146,8 @@ function buildFontThemeUI() {
 })();
 
 // ── FONT SEARCH ──
-let _customDisplayFont = localStorage.getItem('sat-custom-display-font') || null;
-let _customMonoFont    = localStorage.getItem('sat-custom-mono-font')    || null;
+_customDisplayFont = localStorage.getItem('sat-custom-display-font') || null;
+_customMonoFont    = localStorage.getItem('sat-custom-mono-font')    || null;
 
 function setFontTarget(target) {
   _fontTarget = target;
