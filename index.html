@@ -160,10 +160,27 @@
   /* FOCUS */
   #focus-view { display: none; width: 100%; }
   .focus-setup { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 40px; text-align: center; margin-bottom: 28px; }
-  .focus-setup p { font-size: 0.8rem; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
-  .focus-input-row { display: flex; gap: 10px; justify-content: center; align-items: center; }
-  .focus-input-row input { width: 80px; text-align: center; flex: none; border-radius: 12px; }
-  .focus-label { font-family: var(--font-display); font-size: 1.4rem; color: var(--accent); margin-bottom: 16px; }
+  .focus-label { font-family: var(--font-display); font-size: 1.4rem; color: var(--accent); margin-bottom: 20px; }
+  .srs-due-row { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 20px; }
+  .srs-due-count { font-family: var(--font-display); font-size: 3.2rem; color: var(--accent); line-height: 1; }
+  .srs-due-label { font-size: 0.72rem; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 1px; }
+  .srs-caught-msg { font-family: var(--font-display); font-size: 1.2rem; color: var(--accent); margin-bottom: 6px; }
+  .srs-next-msg { font-size: 0.75rem; color: var(--muted); font-family: var(--font-mono); }
+  .srs-progress-bar-wrap { background: var(--border); border-radius: 999px; height: 6px; width: 100%; margin: 16px 0 8px; overflow: hidden; }
+  .srs-progress-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s; }
+  .srs-meta { font-size: 0.68rem; color: var(--muted); font-family: var(--font-mono); margin-top: 4px; }
+  .srs-settings-toggle { background: none; border: none; color: var(--muted); font-size: 0.68rem; font-family: var(--font-mono); cursor: pointer; padding: 6px 0 0; text-decoration: underline; text-underline-offset: 3px; display: block; margin: 8px auto 0; }
+  .srs-settings-toggle:hover { color: var(--text); }
+  .srs-settings-panel { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-top: 12px; text-align: left; display: none; }
+  .srs-settings-panel.open { display: block; }
+  .srs-setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .srs-setting-row:last-child { margin-bottom: 0; }
+  .srs-setting-label { font-size: 0.72rem; color: var(--text); font-family: var(--font-mono); }
+  .srs-setting-label span { display: block; font-size: 0.62rem; color: var(--muted); margin-top: 2px; }
+  .srs-setting-input { width: 64px; text-align: center; border-radius: 8px; font-size: 0.78rem; padding: 5px 8px; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); }
+  .srs-setting-input:focus { outline: none; border-color: var(--accent); }
+  .srs-interval-hint { font-size: 0.68rem; color: var(--muted); font-family: var(--font-mono); text-align: center; letter-spacing: 0.5px; min-height: 16px; }
+  .rating-hint { display: block; font-size: 0.58rem; color: inherit; opacity: 0.6; margin-top: 2px; font-family: var(--font-mono); }
 
   /* ADD */
   .add-section { width: 100%; border-top: 1px solid var(--border); padding-top: 20px; display: flex; flex-direction: column; gap: 8px; }
@@ -589,7 +606,7 @@
       </div>
       <div class="feature-card">
         <div class="feature-icon">🎯</div>
-        <div class="feature-title">Focused Study</div>
+        <div class="feature-title">Spaced Review</div>
         <div class="feature-desc">Pick a set of words and rate how well you know each one. Hard words come back sooner.</div>
       </div>
     </div>
@@ -711,7 +728,7 @@
         </div>
         <div class="results-lists" id="r-lists"></div>
         <div id="wrong-prompt" class="wrong-prompt" style="display:none;">
-          You got some wrong. Want to study those words in Focused Study?
+          You got some wrong. Want to study those words in Spaced Review?
           <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
             <button class="btn" onclick="studyWrong()">Yes, study them →</button>
             <button class="btn" onclick="showQuizSetup()">No thanks</button>
@@ -721,26 +738,51 @@
       </div>
     </div>
 
-    <!-- FOCUSED STUDY -->
+    <!-- SPACED REVIEW -->
     <div id="focus-view" style="display:none;">
+      <!-- Setup / Due screen -->
       <div id="focus-setup" class="focus-setup">
-        <div class="focus-label">Focused Study</div>
-        <div class="source-row" id="focus-source-row">
-          <button class="source-btn active" id="fsrc-all" onclick="selectFocusSource('all')">All words</button>
-          <button class="source-btn" id="fsrc-bookmarked" onclick="selectFocusSource('bookmarked')">⊙ Bookmarked</button>
+        <div class="focus-label">Spaced Review</div>
+        <div class="srs-due-row" id="srs-due-row">
+          <span class="srs-due-count" id="srs-due-count">—</span>
+          <span class="srs-due-label" id="srs-due-label">words due today</span>
         </div>
-        <p id="focus-setup-msg">Pick a number of words to study.<br>A random set will be pulled from your list.</p>
-        <p style="font-size:0.72rem;color:var(--muted);margin-top:-12px;"><span id="focus-word-count-label"></span></p>
-        <div class="focus-input-row" id="focus-input-row">
-          <input id="focus-count" type="number" min="2" placeholder="10" />
-          <button class="btn" onclick="startFocus()">Start →</button>
+        <div id="srs-start-area">
+          <button class="btn" id="srs-start-btn" onclick="startSRS()">Start Review →</button>
+        </div>
+        <div id="srs-caught-up" style="display:none;">
+          <div class="srs-caught-msg">All caught up!</div>
+          <div class="srs-next-msg" id="srs-next-msg"></div>
+        </div>
+        <div class="srs-meta" id="srs-meta"></div>
+        <button class="srs-settings-toggle" onclick="toggleSRSSettings()">⚙ Settings</button>
+        <div class="srs-settings-panel" id="srs-settings-panel">
+          <div class="srs-setting-row">
+            <div class="srs-setting-label">Daily limit<span>Max words per session (0 = no limit)</span></div>
+            <input class="srs-setting-input" id="srs-limit-input" type="number" min="0" max="9999" placeholder="∞" oninput="saveSRSSettings()" />
+          </div>
+          <div class="srs-setting-row">
+            <div class="srs-setting-label">New words cap<span>Max new words per day</span></div>
+            <input class="srs-setting-input" id="srs-new-cap-input" type="number" min="0" max="9999" placeholder="∞" oninput="saveSRSSettings()" />
+          </div>
+          <div style="border-top:1px solid var(--border);margin:12px 0 12px;"></div>
+          <div class="srs-setting-label" style="margin-bottom:8px;">Review data<span>Back up or restore your schedule across devices</span></div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn" style="flex:1;font-size:0.7rem;padding:7px 0;" onclick="exportSRSData()">↓ Export</button>
+            <label class="btn" style="flex:1;font-size:0.7rem;padding:7px 0;cursor:pointer;text-align:center;">↑ Import<input type="file" accept=".json" style="display:none;" onchange="importSRSData(event)" /></label>
+          </div>
         </div>
       </div>
+      <!-- Card screen -->
       <div id="focus-card-wrap" style="display:none;flex-direction:column;gap:12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <span class="counter" id="foc-counter">0 remaining</span>
           <button class="btn btn-danger" onclick="resetFocusSetup()" style="padding:6px 14px;font-size:0.72rem;">Stop</button>
         </div>
+        <div class="srs-progress-bar-wrap" id="srs-progress-wrap">
+          <div class="srs-progress-fill" id="srs-progress-fill" style="width:0%"></div>
+        </div>
+        <div class="srs-interval-hint" id="srs-interval-hint"></div>
         <div class="card-wrap" onclick="flipFocusCard()">
           <div class="card" id="focus-card">
             <div class="card-face card-front"><div class="card-word" id="foc-word">—</div><div class="card-hint">click to reveal</div></div>
@@ -748,12 +790,12 @@
           </div>
         </div>
         <div class="focus-rating" id="focus-rating">
-          <button class="rating-btn rating-hard" onclick="rateFocus('hard')">✗ Don't know</button>
-          <button class="rating-btn rating-mid" onclick="rateFocus('mid')">~ Kinda know</button>
-          <button class="rating-btn rating-easy" onclick="rateFocus('easy')">✓ Know it</button>
+          <button class="rating-btn rating-hard" onclick="rateFocus('hard')">✗ Don't know<span class="rating-hint">+1 day</span></button>
+          <button class="rating-btn rating-mid" onclick="rateFocus('mid')">~ Kinda<span class="rating-hint">same</span></button>
+          <button class="rating-btn rating-easy" onclick="rateFocus('easy')">✓ Know it<span class="rating-hint">interval ×</span></button>
         </div>
-        <button id="focus-dl-btn" class="json-btn" style="display:none;" onclick="downloadFocusJSON()">↓ Download these words as JSON</button>
       </div>
+      <!-- Results screen -->
       <div id="focus-results" style="display:none;">
         <div class="results-card" style="margin-bottom:20px;">
           <div style="font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;">Session Complete</div>
@@ -762,8 +804,7 @@
         </div>
         <div class="results-lists" id="foc-result-lists" style="grid-template-columns:1fr 1fr 1fr;"></div>
         <div class="results-actions" style="margin-top:16px;">
-          <button class="btn" onclick="resetFocusSetup()">↺ New Session</button>
-          <button id="foc-dl-results-btn" class="json-btn" style="max-width:200px;" onclick="downloadFocusJSON()">↓ Download wrong words</button>
+          <button class="btn" onclick="resetFocusSetup()">↺ Done</button>
         </div>
       </div>
     </div>
@@ -794,7 +835,7 @@
     <div class="tabs" style="justify-content:flex-start;margin:0;">
       <button class="tab active" onclick="switchMode('flash')">Flashcards</button>
       <button class="tab" onclick="switchMode('quiz')">Quiz</button>
-      <button class="tab" onclick="switchMode('focus')">Focused Study</button>
+      <button class="tab" onclick="switchMode('focus')">Spaced Review</button>
       <button class="tab" onclick="switchMode('analytics')">Analytics</button>
     </div>
 
@@ -1183,7 +1224,7 @@ function closeResetAllModal() {
   document.getElementById('reset-all-modal').classList.remove('open');
 }
 function doResetAllData() {
-  const keys = ['sat-groups','sat-active-group','sat-words','sat-theme2','sat-bg-preset',
+  const keys = ['sat-groups','sat-active-group','sat-words','sat-theme2','sat-bg-preset','sat-srs','sat-srs-settings',
                 'sat-stats','sat-word-analytics','sat-passages-used','sat-reading-unlocked',
                 'sat-grad','sat-grad-on','sat-app-version','sat-font-theme',
                 'sat-custom-display-font','sat-custom-mono-font','sat-fc-idx','sat-bookmarks'];
@@ -2491,7 +2532,6 @@ function switchGroup(id) {
   document.getElementById('focus-card-wrap').style.display = 'none';
   document.getElementById('focus-results').style.display = 'none';
   document.getElementById('focus-setup').style.display = 'block';
-  document.getElementById('focus-count').value = '';
   switchMode('flash');
   showCard();
   renderWordList();
@@ -2838,7 +2878,7 @@ function startQuiz() {
   }
   if (quizMode === 'limited') quizLimit = Math.min(quizLimit, baseIdx.length);
   quizPool = quizMode === 'limited' ? baseIdx.slice(0, quizLimit) : baseIdx;
-  setWordListContext(quizMode === 'limited' ? [...quizPool] : (_quizSource === 'bookmarked' ? [...baseIdx] : 'all'));
+  ctxQuiz = 'all';
   document.getElementById('quiz-setup').style.display = 'none';
   document.getElementById('quiz-results').style.display = 'none';
   document.getElementById('quiz-active').style.display = 'block';
@@ -2943,147 +2983,296 @@ function showQuizSetup() {
 
 // ── FOCUSED STUDY ──
 
-function downloadFocusJSON() {
-  const indices = focusWrongIndices.length > 0 ? focusWrongIndices : focusSet;
-  const data = indices.map(i => words[i]).filter(Boolean);
-  if (!data.length) { showToast('No wrong words to download.'); return; }
+// ── SPACED REVIEW (SRS) ──
+// SRS data: sat-srs = { groupId: { word: { interval, ease, due, lastReviewed } } }
+// interval = days until next review; ease = multiplier (starts 2.5); due = ISO date string
+
+function getSRSData() {
+  return JSON.parse(localStorage.getItem('sat-srs') || '{}');
+}
+function saveSRSData(data) {
+  localStorage.setItem('sat-srs', JSON.stringify(data));
+}
+function getGroupSRS() {
+  const all = getSRSData();
+  return all[activeGroupId] || {};
+}
+function saveGroupSRS(groupData) {
+  const all = getSRSData();
+  all[activeGroupId] = groupData;
+  saveSRSData(all);
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function daysBetween(a, b) {
+  const da = new Date(a + 'T00:00:00'), db = new Date(b + 'T00:00:00');
+  return Math.round((db - da) / 86400000);
+}
+
+function getSRSDueWords() {
+  // Returns array of word indices that are due today or overdue
+  // Respects _srsSettings.newCap and .limit
+  const today = todayStr();
+  const srs = getGroupSRS();
+  let newCount = 0;
+  const newCap = _srsSettings.newCap || Infinity;
+  const allDue = words.map((w, i) => {
+    const rec = srs[w.word];
+    if (!rec) {
+      if (newCount >= newCap) return null; // over new-words cap
+      newCount++;
+      return i;
+    }
+    return rec.due <= today ? i : null;
+  }).filter(i => i !== null);
+  const limit = _srsSettings.limit || Infinity;
+  return allDue.slice(0, limit);
+}
+
+function getNextDueDate() {
+  // Returns the nearest future due date string, or null
+  const today = todayStr();
+  const srs = getGroupSRS();
+  let nearest = null;
+  words.forEach(w => {
+    const rec = srs[w.word];
+    if (!rec) return; // new words are always due (shouldn't reach here if any new words exist)
+    if (rec.due > today) {
+      if (!nearest || rec.due < nearest) nearest = rec.due;
+    }
+  });
+  return nearest;
+}
+
+function srsSchedule(wordStr, rating) {
+  // SM-2 simplified scheduling
+  const srs = getGroupSRS();
+  const today = todayStr();
+  let rec = srs[wordStr] || { interval: 1, ease: 2.5, due: today, lastReviewed: null };
+
+  if (rating === 'hard') {
+    rec.interval = 1;
+    rec.ease = Math.max(1.3, rec.ease - 0.2);
+  } else if (rating === 'mid') {
+    rec.interval = Math.max(1, Math.round(rec.interval * 1.2));
+    rec.ease = Math.max(1.3, rec.ease - 0.15);
+  } else { // easy
+    rec.interval = Math.max(1, Math.round(rec.interval * rec.ease));
+    rec.ease = Math.min(3.0, rec.ease + 0.1);
+  }
+
+  rec.lastReviewed = today;
+  rec.due = addDays(today, rec.interval);
+  srs[wordStr] = rec;
+  saveGroupSRS(srs);
+  return rec.interval;
+}
+
+function getIntervalHint(wordStr) {
+  const srs = getGroupSRS();
+  const rec = srs[wordStr];
+  if (!rec || !rec.lastReviewed) return 'New word';
+  const days = daysBetween(rec.lastReviewed, rec.due);
+  if (days <= 1) return 'Last reviewed today · Due tomorrow';
+  return `Last reviewed ${rec.lastReviewed} · Due in ${days} day${days !== 1 ? 's' : ''}`;
+}
+
+// Session state
+let _srsQueue = [];     // array of word indices for this session
+let _srsSessionIdx = 0; // current position in queue
+let _srsResults = {};   // wordIdx -> 'hard'|'mid'|'easy'
+let _srsStartTime = null;
+let _srsSettings = { limit: 0, newCap: 0 }; // 0 = unlimited
+
+function exportSRSData() {
+  const data = {
+    version: 1,
+    exported: new Date().toISOString(),
+    srs: JSON.parse(localStorage.getItem('sat-srs') || '{}')
+  };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'wrong-words.json'; a.click();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `sat-srs-backup-${todayStr()}.json`;
+  a.click();
 }
 
-function studyWrong() {
-  focusFromQuiz = true;
-  const wrongIndices = quizWrongWords
-    .map(w => words.findIndex(wd => wd.word === w))
-    .filter(i => i !== -1);
-  focusSessionDone = false;
-  focusSet = [...new Set(wrongIndices)];
-  focusQueue = focusSet.map(wi => ({ wordIdx: wi, due: 0 }));
-  focusAttempt = 0;
-  focusStatus = {};
-  focusMasteredSet = new Set();
-  focusWrongIndices = [];
-  focusStartTime = Date.now();
-  ctxFocus = focusSet.slice();
-  activeMode = 'focus';
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i === 2));
-  document.getElementById('flash-view').style.display = 'none';
-  document.getElementById('quiz-view').style.display = 'none';
-  document.getElementById('focus-view').style.display = 'block';
+function importSRSData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const srsData = data.srs || data; // support both wrapped and raw formats
+      // Merge: imported data wins for matching words, keeps local data for others
+      const existing = JSON.parse(localStorage.getItem('sat-srs') || '{}');
+      const merged = Object.assign({}, existing);
+      Object.keys(srsData).forEach(groupId => {
+        merged[groupId] = Object.assign({}, existing[groupId] || {}, srsData[groupId]);
+      });
+      localStorage.setItem('sat-srs', JSON.stringify(merged));
+      showToast('SRS data imported ✓');
+      buildSRSSetup();
+    } catch {
+      showToast('Invalid file — import failed.');
+    }
+    event.target.value = ''; // reset so same file can be re-imported
+  };
+  reader.readAsText(file);
+}
+
+function toggleSRSSettings() {
+  const panel = document.getElementById('srs-settings-panel');
+  panel.classList.toggle('open');
+}
+
+function loadSRSSettings() {
+  const saved = JSON.parse(localStorage.getItem('sat-srs-settings') || '{}');
+  _srsSettings = { limit: saved.limit || 0, newCap: saved.newCap || 0 };
+  const limitEl = document.getElementById('srs-limit-input');
+  const newCapEl = document.getElementById('srs-new-cap-input');
+  if (limitEl) limitEl.value = _srsSettings.limit || '';
+  if (newCapEl) newCapEl.value = _srsSettings.newCap || '';
+}
+
+function saveSRSSettings() {
+  const limitEl = document.getElementById('srs-limit-input');
+  const newCapEl = document.getElementById('srs-new-cap-input');
+  _srsSettings.limit = parseInt(limitEl?.value) || 0;
+  _srsSettings.newCap = parseInt(newCapEl?.value) || 0;
+  localStorage.setItem('sat-srs-settings', JSON.stringify(_srsSettings));
+  buildSRSSetup(); // refresh the due count to reflect new limits
+}
+
+function buildSRSSetup() {
+  const due = getSRSDueWords();
+  const dueCount = due.length;
+  const countEl = document.getElementById('srs-due-count');
+  const labelEl = document.getElementById('srs-due-label');
+  const startArea = document.getElementById('srs-start-area');
+  const caughtUp = document.getElementById('srs-caught-up');
+  const metaEl = document.getElementById('srs-meta');
+
+  metaEl.textContent = '';
+
+  if (dueCount > 0) {
+    countEl.textContent = dueCount;
+    labelEl.textContent = dueCount === 1 ? 'word due today' : 'words due today';
+    startArea.style.display = 'block';
+    caughtUp.style.display = 'none';
+    // Show breakdown: how many are new vs review
+    const srs = getGroupSRS();
+    const newCount = due.filter(i => !srs[words[i].word]).length;
+    const reviewCount = dueCount - newCount;
+    const parts = [];
+    if (newCount > 0) parts.push(`${newCount} new`);
+    if (reviewCount > 0) parts.push(`${reviewCount} review`);
+    metaEl.textContent = parts.join(' · ');
+  } else {
+    countEl.textContent = '0';
+    labelEl.textContent = 'words due today';
+    startArea.style.display = 'none';
+    caughtUp.style.display = 'block';
+    const next = getNextDueDate();
+    const nextEl = document.getElementById('srs-next-msg');
+    if (next) {
+      const days = daysBetween(todayStr(), next);
+      nextEl.textContent = days === 1 ? 'Next review tomorrow' : `Next review in ${days} days (${next})`;
+    } else {
+      nextEl.textContent = words.length === 0 ? 'Add some words to get started.' : '';
+    }
+  }
+}
+
+function startSRS() {
+  const due = getSRSDueWords();
+  if (due.length === 0) { buildSRSSetup(); return; }
+  // Shuffle
+  for (let i = due.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [due[i], due[j]] = [due[j], due[i]];
+  }
+  _srsQueue = due;
+  _srsSessionIdx = 0;
+  _srsResults = {};
+  _srsStartTime = Date.now();
+  focusSet = [...due];
+  ctxFocus = 'all';
   document.getElementById('focus-setup').style.display = 'none';
   document.getElementById('focus-results').style.display = 'none';
   document.getElementById('focus-card-wrap').style.display = 'flex';
-  document.getElementById('focus-dl-btn').style.display = 'none';
-  refreshWordListForMode();
-  updateShuffleBtn();
-  showFocusCard();
-  ctxQuiz = 'all';
-  quizPool = []; quizAsked = [];
-  document.getElementById('quiz-setup').style.display = 'block';
-  document.getElementById('quiz-active').style.display = 'none';
-  document.getElementById('quiz-results').style.display = 'none';
+  showSRSCard();
 }
 
-function startFocus() {
-  _sessionGroupId = activeGroupId;
-  const raw = parseInt(document.getElementById('focus-count').value);
-  const count = isNaN(raw) ? 10 : Math.max(2, Math.min(raw, words.length));
-  if (words.length < 2) { showToast('Add at least 2 words first.'); return; }
-  const bm_f = getBookmarks();
-  let baseF = words.map((_,i)=>i);
-  if (_focusSource === 'bookmarked') {
-    baseF = baseF.filter(i => bm_f[words[i].word]);
-    if (baseF.length < 2) { showToast('You need at least 2 bookmarked words to study.'); return; }
-  }
-  for (let i=baseF.length-1;i>0;i--) {
-    const j=Math.floor(Math.random()*(i+1));
-    [baseF[i],baseF[j]]=[baseF[j],baseF[i]];
-  }
-  const count_clamped = Math.min(count, baseF.length);
-  focusSessionDone = false;
-  focusSet = baseF.slice(0, count_clamped);
-  focusQueue = focusSet.map(wi => ({ wordIdx: wi, due: 0 }));
-  focusAttempt = 0;
-  focusStatus = {};
-  focusMasteredSet = new Set();
-  focusStartTime = Date.now();
-  setWordListContext(focusSet.slice());
-  document.getElementById('focus-setup').style.display = 'none';
-  document.getElementById('focus-results').style.display = 'none';
-  document.getElementById('focus-card-wrap').style.display = 'flex';
-  showFocusCard();
-}
-
-function currentFocusItem() {
-  for (let i = focusAttempt; i < focusQueue.length; i++) {
-    const item = focusQueue[i];
-    if (!focusMasteredSet.has(item.wordIdx)) return { item, queueIdx: i };
-  }
-  return null;
-}
-
-function showFocusCard() {
-  if (activeMode !== 'focus') return;
-  stopWordTimer();
-  const next = currentFocusItem();
-  if (!next) { showFocusResults(); return; }
+function showSRSCard() {
+  if (_srsSessionIdx >= _srsQueue.length) { showSRSResults(); return; }
+  const wi = _srsQueue[_srsSessionIdx];
+  const w = words[wi];
+  if (!w) { _srsSessionIdx++; showSRSCard(); return; }
   document.getElementById('focus-card').classList.remove('flipped');
-  const w = words[next.item.wordIdx];
   document.getElementById('foc-word').textContent = w.word;
-  startWordTimer(w.word);
   document.getElementById('foc-def').textContent = w.definition;
-  const remaining = focusSet.length - focusMasteredSet.size;
+  startWordTimer(w.word);
+  const remaining = _srsQueue.length - _srsSessionIdx;
   document.getElementById('foc-counter').textContent = `${remaining} remaining`;
+  // Show interval hint
+  document.getElementById('srs-interval-hint').textContent = getIntervalHint(w.word);
+  // Progress bar
+  const progressFill = document.getElementById('srs-progress-fill');
+  const pct = Math.round((_srsSessionIdx / _srsQueue.length) * 100);
+  if (progressFill) progressFill.style.width = pct + '%';
 }
 
-function flipFocusCard() { document.getElementById('focus-card').classList.toggle('flipped'); }
+function flipFocusCard() {
+  document.getElementById('focus-card').classList.toggle('flipped');
+}
 
 function rateFocus(rating) {
-  const next = currentFocusItem();
-  if (!next) return;
-  const { item, queueIdx } = next;
-  focusStatus[item.wordIdx] = rating;
-  const ratedWord = words[item.wordIdx]?.word;
-  if (ratedWord) recordAnalytic(ratedWord, rating === 'easy' ? 'focusEasy' : rating === 'mid' ? 'focusMid' : 'focusHard');
-  if (rating === 'easy') {
-    focusMasteredSet.add(item.wordIdx);
-    focusQueue = focusQueue.filter((q, i) => i === queueIdx || q.wordIdx !== item.wordIdx);
-  } else if (rating === 'mid') {
-    const delay = 4 + Math.floor(Math.random() * 3);
-    focusQueue.splice(focusAttempt + delay, 0, { wordIdx: item.wordIdx, due: focusAttempt + delay });
-  } else {
-    const delay = 1 + Math.floor(Math.random() * 2);
-    focusQueue.splice(focusAttempt + delay, 0, { wordIdx: item.wordIdx, due: focusAttempt + delay });
-  }
-  focusAttempt++;
-  if (focusMasteredSet.size === focusSet.length) { showFocusResults(); return; }
-  showFocusCard();
+  const wi = _srsQueue[_srsSessionIdx];
+  if (wi === undefined) return;
+  const w = words[wi];
+  if (!w) { _srsSessionIdx++; showSRSCard(); return; }
+  // Schedule and record
+  const newInterval = srsSchedule(w.word, rating);
+  _srsResults[wi] = { rating, interval: newInterval };
+  recordAnalytic(w.word, rating === 'easy' ? 'focusEasy' : rating === 'mid' ? 'focusMid' : 'focusHard');
+  // Update rating hint labels with actual scheduled interval
+  const hintMap = { hard: '+1 day', mid: `+${Math.max(1, Math.round((getGroupSRS()[w.word]?.interval || 1) * 1.2))} days`, easy: `+${newInterval} days` };
+  _srsSessionIdx++;
+  showSRSCard();
 }
 
-function showFocusResults() {
+function showSRSResults() {
   stopWordTimer();
-  focusSessionDone = true;
   document.getElementById('focus-card-wrap').style.display = 'none';
   document.getElementById('focus-results').style.display = 'block';
-  setWordListContext(focusSet.slice());
-  const elapsed = focusStartTime ? Math.round((Date.now() - focusStartTime) / 1000) : 0;
+  const elapsed = _srsStartTime ? Math.round((Date.now() - _srsStartTime) / 1000) : 0;
   const mins = Math.floor(elapsed / 60), secs = elapsed % 60;
   const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
-  const total = focusSet.length;
-  const mastered = focusMasteredSet.size;
-  const pct = Math.round((mastered / total) * 100);
-  document.getElementById('foc-mastered-pct').textContent = pct + '% Mastered';
-  document.getElementById('foc-results-sub').textContent = `${mastered} / ${total} words · ${timeStr}`;
+  const total = _srsQueue.length;
+  const easyCount = Object.values(_srsResults).filter(r => r.rating === 'easy').length;
+  const pct = Math.round((easyCount / total) * 100);
+  document.getElementById('foc-mastered-pct').textContent = pct + '% Known';
+  document.getElementById('foc-results-sub').textContent = `${total} word${total !== 1 ? 's' : ''} reviewed · ${timeStr}`;
   const hardWords = [], midWords = [], easyWords = [];
-  const seenWi = new Set();
-  focusSet.forEach(wi => {
-    if (seenWi.has(wi)) return;
-    seenWi.add(wi);
-    const label = words[wi].word;
-    const s = focusStatus[wi];
-    if (s === 'easy' || focusMasteredSet.has(wi)) easyWords.push(label);
-    else if (s === 'mid') midWords.push(label);
-    else hardWords.push(label);
+  _srsQueue.forEach(wi => {
+    const w = words[wi]; if (!w) return;
+    const r = _srsResults[wi];
+    const interval = r?.interval || 1;
+    const label = `${w.word} (${interval}d)`;
+    if (!r || r.rating === 'hard') hardWords.push(label);
+    else if (r.rating === 'mid') midWords.push(label);
+    else easyWords.push(label);
   });
   const lists = document.getElementById('foc-result-lists');
   lists.innerHTML = '';
@@ -3098,24 +3287,63 @@ function showFocusResults() {
       + (arr.length ? arr.map(w => `<div class="result-word">${w}</div>`).join('') : '<div class="result-word" style="color:var(--muted)">none</div>');
     lists.appendChild(el);
   });
-  focusWrongIndices = hardWords.map(w => words.findIndex(wd => wd.word === w)).filter(i => i !== -1);
-  document.getElementById('foc-dl-results-btn').style.display = focusWrongIndices.length > 0 ? 'inline-block' : 'none';
 }
 
 function resetFocusSetup() {
   focusFromQuiz = false;
-  updateFocusWordCountLabel();
+  stopWordTimer();
   document.getElementById('focus-setup').style.display = 'block';
   document.getElementById('focus-card-wrap').style.display = 'none';
   document.getElementById('focus-results').style.display = 'none';
-  document.getElementById('focus-setup-msg').textContent = 'Pick a number of words to study.\nA random set will be pulled from your list.';
-  document.getElementById('focus-input-row').style.display = 'flex';
-  document.getElementById('focus-count').value = '';
-  document.getElementById('focus-dl-btn').style.display = 'none';
-  focusWrongIndices = [];
+  // Close settings panel on return
+  const panel = document.getElementById('srs-settings-panel');
+  if (panel) panel.classList.remove('open');
   ctxFocus = 'all'; refreshWordListForMode();
+  loadSRSSettings();
+  buildSRSSetup();
 }
 
+// Keep studyWrong working — routes wrong quiz words into a one-off SRS session
+function studyWrong() {
+  focusFromQuiz = true;
+  const wrongIndices = quizWrongWords
+    .map(w => words.findIndex(wd => wd.word === w))
+    .filter(i => i !== -1);
+  if (wrongIndices.length === 0) return;
+  _srsQueue = [...new Set(wrongIndices)];
+  _srsSessionIdx = 0;
+  _srsResults = {};
+  _srsStartTime = Date.now();
+  focusSet = [..._srsQueue];
+  ctxFocus = 'all';
+  activeMode = 'focus';
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i === 2));
+  document.getElementById('flash-view').style.display = 'none';
+  document.getElementById('quiz-view').style.display = 'none';
+  document.getElementById('focus-view').style.display = 'block';
+  document.getElementById('focus-setup').style.display = 'none';
+  document.getElementById('focus-results').style.display = 'none';
+  document.getElementById('focus-card-wrap').style.display = 'flex';
+  refreshWordListForMode();
+  updateShuffleBtn();
+  showSRSCard();
+  ctxQuiz = 'all';
+  quizPool = []; quizAsked = [];
+  document.getElementById('quiz-setup').style.display = 'block';
+  document.getElementById('quiz-active').style.display = 'none';
+  document.getElementById('quiz-results').style.display = 'none';
+}
+
+// Stub — no longer needed but kept so nothing breaks if called
+function startFocus() { startSRS(); }
+function selectFocusSource(src) {}
+function updateFocusWordCountLabel() {}
+function shuffleFocus() {}
+function showFocusCard() { showSRSCard(); }
+function currentFocusItem() { return null; }
+function downloadFocusJSON() {}
+
+// ── FONT THEMES ──
 // ── FONT THEMES ──
 const fontThemes = [
   { name: 'Default',   display: 'Playfair Display',   mono: 'IBM Plex Mono',   swatch: '#0e0e0e', accent: '#c8f060', text: '#f0ede6', label: 'Aa' },
@@ -3518,7 +3746,9 @@ function switchMode(mode) {
   if (mode === 'focus' && !focusFromQuiz) {
     if (document.getElementById('focus-card-wrap').style.display === 'none' &&
         document.getElementById('focus-results').style.display === 'none') {
-      resetFocusSetup();
+      document.getElementById('focus-setup').style.display = 'block';
+      loadSRSSettings();
+      buildSRSSetup();
     }
   }
 }
