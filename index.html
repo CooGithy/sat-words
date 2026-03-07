@@ -2751,9 +2751,9 @@ function clearGroupAnalytics(groupId) {
   // Clear daily SRS record for this group
   const daily = JSON.parse(localStorage.getItem('sat-srs-daily') || '{}');
   if (daily[groupId]) { delete daily[groupId]; localStorage.setItem('sat-srs-daily', JSON.stringify(daily)); }
-  // Clear word-level analytics for these words
+  // Clear word-level analytics for this group entirely
   const wa = JSON.parse(localStorage.getItem('sat-word-analytics') || '{}');
-  wordSet.forEach(w => { delete wa[w]; });
+  delete wa[groupId];
   localStorage.setItem('sat-word-analytics', JSON.stringify(wa));
 }
 
@@ -2993,12 +2993,12 @@ function answerQ(btn, isCorrect, ci) {
     quizWrongWords.push(words[ci].word);
   }
   document.querySelectorAll('.option').forEach(o => o.disabled = true);
-  if (_qfsOpen) syncQFS();
   document.getElementById('q-live-score').textContent = `${quizCorrect} / ${quizQ} correct`;
   if (quizMode === 'limited' && quizQ >= quizLimit) {
     document.getElementById('q-next').textContent = 'See Results →';
   }
   document.getElementById('q-next').style.display = 'inline-block';
+  if (_qfsOpen) syncQFS(); // must be after q-next is shown
 }
 
 function endQuiz() {
@@ -3815,6 +3815,7 @@ function qfsNewCard() {
   document.getElementById('qfs-feedback').textContent = '';
   document.getElementById('qfs-feedback').style.color = '';
   document.getElementById('qfs-next').style.display = 'none';
+
   document.getElementById('qfs-word').textContent = document.getElementById('q-word').textContent;
   document.getElementById('qfs-progress').textContent = document.getElementById('q-progress').textContent;
   document.getElementById('qfs-score').textContent = document.getElementById('q-live-score').textContent;
@@ -3839,7 +3840,7 @@ function syncQFS() {
   const nextVisible = document.getElementById('q-next').style.display !== 'none';
   document.getElementById('qfs-feedback').textContent = feedback;
   document.getElementById('qfs-feedback').style.color = document.getElementById('q-feedback').style.color;
-  document.getElementById('qfs-next').style.display = nextVisible ? 'inline-block' : 'none';
+  document.getElementById('qfs-next').style.display = nextVisible ? 'flex' : 'none';
   document.getElementById('qfs-score').textContent = document.getElementById('q-live-score').textContent;
   // Sync option highlight state
   const srcOpts = document.getElementById('q-options').querySelectorAll('.option');
