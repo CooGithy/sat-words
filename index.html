@@ -1224,7 +1224,7 @@ function closeResetAllModal() {
   document.getElementById('reset-all-modal').classList.remove('open');
 }
 function doResetAllData() {
-  const keys = ['sat-groups','sat-active-group','sat-words','sat-theme2','sat-bg-preset','sat-srs','sat-srs-settings',
+  const keys = ['sat-groups','sat-active-group','sat-words','sat-theme2','sat-bg-preset','sat-srs','sat-srs-settings','sat-srs-daily',
                 'sat-stats','sat-word-analytics','sat-passages-used','sat-reading-unlocked',
                 'sat-grad','sat-grad-on','sat-app-version','sat-font-theme',
                 'sat-custom-display-font','sat-custom-mono-font','sat-fc-idx','sat-bookmarks'];
@@ -3018,24 +3018,60 @@ function daysBetween(a, b) {
   return Math.round((db - da) / 86400000);
 }
 
+// ── Daily new-word tracking ──
+// sat-srs-daily = { groupId: { date: "YYYY-MM-DD", newSeen: ["word1","word2",...] } }
+function getDailyRecord() {
+  const all = JSON.parse(localStorage.getItem('sat-srs-daily') || '{}');
+  const today = todayStr();
+  const rec = all[activeGroupId];
+  if (rec && rec.date === today) return rec;
+  // New day — reset
+  const fresh = { date: today, newSeen: [] };
+  all[activeGroupId] = fresh;
+  localStorage.setItem('sat-srs-daily', JSON.stringify(all));
+  return fresh;
+}
+
+function markNewWordsSeen(wordStrArr) {
+  const all = JSON.parse(localStorage.getItem('sat-srs-daily') || '{}');
+  const today = todayStr();
+  const rec = all[activeGroupId] || { date: today, newSeen: [] };
+  if (rec.date !== today) { rec.date = today; rec.newSeen = []; }
+  wordStrArr.forEach(w => { if (!rec.newSeen.includes(w)) rec.newSeen.push(w); });
+  all[activeGroupId] = rec;
+  localStorage.setItem('sat-srs-daily', JSON.stringify(all));
+}
+
 function getSRSDueWords() {
-  // Returns array of word indices that are due today or overdue
-  // Respects _srsSettings.newCap and .limit
   const today = todayStr();
   const srs = getGroupSRS();
-  let newCount = 0;
+  const daily = getDailyRecord();
   const newCap = _srsSettings.newCap || Infinity;
-  const allDue = words.map((w, i) => {
+  // How many new words has this group already seen today
+  const alreadyNewToday = daily.newSeen.length;
+
+  const reviewDue = [];  // interval-due (always included)
+  const newDue = [];     // brand-new words (capped)
+
+  words.forEach((w, i) => {
     const rec = srs[w.word];
     if (!rec) {
-      if (newCount >= newCap) return null; // over new-words cap
-      newCount++;
-      return i;
+      // New word — only show if: already seen today (re-opening mid-session) OR under cap
+      if (daily.newSeen.includes(w.word)) {
+        newDue.push(i); // already counted today, always include
+      } else if (newDue.length + alreadyNewToday < newCap) {
+        newDue.push(i);
+      }
+      // else: new-word cap hit, skip until tomorrow
+    } else if (rec.due <= today) {
+      reviewDue.push(i); // scheduled review, always include
     }
-    return rec.due <= today ? i : null;
-  }).filter(i => i !== null);
+  });
+
+  // Interleave: reviews first, then new words, respecting total daily limit
+  const combined = [...reviewDue, ...newDue];
   const limit = _srsSettings.limit || Infinity;
-  return allDue.slice(0, limit);
+  return combined.slice(0, limit);
 }
 
 function getNextDueDate() {
@@ -3097,7 +3133,8 @@ function exportSRSData() {
   const data = {
     version: 1,
     exported: new Date().toISOString(),
-    srs: JSON.parse(localStorage.getItem('sat-srs') || '{}')
+    srs: JSON.parse(localStorage.getItem('sat-srs') || '{}'),
+    daily: JSON.parse(localStorage.getItem('sat-srs-daily') || '{}')
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
@@ -3114,13 +3151,19 @@ function importSRSData(event) {
     try {
       const data = JSON.parse(e.target.result);
       const srsData = data.srs || data; // support both wrapped and raw formats
-      // Merge: imported data wins for matching words, keeps local data for others
+      // Merge SRS schedules
       const existing = JSON.parse(localStorage.getItem('sat-srs') || '{}');
       const merged = Object.assign({}, existing);
       Object.keys(srsData).forEach(groupId => {
         merged[groupId] = Object.assign({}, existing[groupId] || {}, srsData[groupId]);
       });
       localStorage.setItem('sat-srs', JSON.stringify(merged));
+      // Merge daily records if present
+      if (data.daily) {
+        const existingDaily = JSON.parse(localStorage.getItem('sat-srs-daily') || '{}');
+        const mergedDaily = Object.assign({}, existingDaily, data.daily);
+        localStorage.setItem('sat-srs-daily', JSON.stringify(mergedDaily));
+      }
       showToast('SRS data imported ✓');
       buildSRSSetup();
     } catch {
@@ -3174,9 +3217,14 @@ function buildSRSSetup() {
     const srs = getGroupSRS();
     const newCount = due.filter(i => !srs[words[i].word]).length;
     const reviewCount = dueCount - newCount;
+    const daily = getDailyRecord();
+    const newCap = _srsSettings.newCap || Infinity;
     const parts = [];
-    if (newCount > 0) parts.push(`${newCount} new`);
     if (reviewCount > 0) parts.push(`${reviewCount} review`);
+    if (newCount > 0) {
+      const remaining = isFinite(newCap) ? `${newCount} new (${daily.newSeen.length}/${newCap} today)` : `${newCount} new`;
+      parts.push(remaining);
+    }
     metaEl.textContent = parts.join(' · ');
   } else {
     countEl.textContent = '0';
@@ -3208,6 +3256,10 @@ function startSRS() {
   _srsStartTime = Date.now();
   focusSet = [...due];
   ctxFocus = 'all';
+  // Mark new words as seen today so cap persists across refreshes
+  const srs = getGroupSRS();
+  const newWordsInSession = due.map(i => words[i]?.word).filter(w => w && !srs[w]);
+  if (newWordsInSession.length) markNewWordsSeen(newWordsInSession);
   document.getElementById('focus-setup').style.display = 'none';
   document.getElementById('focus-results').style.display = 'none';
   document.getElementById('focus-card-wrap').style.display = 'flex';
