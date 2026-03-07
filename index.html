@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="SAT Words">
 <meta name="theme-color" content="#0e0e0e">
 <title>SAT Words</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230e0e0e'/><text y='72' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' font-weight='700' fill='%23c8f060'>S</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=Cormorant+Garamond:wght@400;600&family=DM+Serif+Display&family=Fraunces:wght@400;700&family=Syne:wght@400;700&family=Space+Grotesk:wght@400;600&family=Crimson+Pro:wght@400;600&family=Josefin+Sans:wght@400;600&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -189,7 +190,16 @@
 
   /* WORD LIST */
   .word-list-section { width: 100%; }
-  .word-list { display: flex; flex-direction: column; gap: 6px; max-height: calc(100vh - 360px); overflow-y: auto; }
+  .word-search-wrap { position: relative; margin-bottom: 8px; }
+  .word-search-input { width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 32px 8px 12px; border-radius: 10px; font-family: var(--font-mono); font-size: 0.78rem; outline: none; transition: border-color 0.15s; }
+  .word-search-input:focus { border-color: var(--accent); }
+  .word-search-input::placeholder { color: var(--muted); }
+  .word-search-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.85rem; line-height: 1; padding: 2px 4px; display: none; }
+  .word-search-clear:hover { color: var(--text); }
+  .word-list { display: flex; flex-direction: column; gap: 6px; max-height: calc(100vh - 380px); overflow-y: auto; }
+  /* INLINE ALERT TOAST */
+  .inline-toast { position: fixed; top: 72px; left: 50%; transform: translateX(-50%) translateY(-8px); background: var(--surface); border: 1px solid #ff5555; color: #ff5555; border-radius: 10px; padding: 10px 20px; font-family: var(--font-mono); font-size: 0.78rem; white-space: nowrap; box-shadow: 0 4px 20px rgba(0,0,0,0.5); opacity: 0; pointer-events: none; transition: opacity 0.18s, transform 0.18s; z-index: 9000; }
+  .inline-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .word-list-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
   .word-list-lbl { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
   .bm-filter-btn { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 3px 9px; font-size: 0.65rem; font-family: var(--font-mono); color: var(--muted); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 5px; }
@@ -788,6 +798,10 @@
         <div class="word-list-lbl" id="word-list-label">All Words (<span id="word-count">0</span>)</div>
         <button class="bm-filter-btn" id="bm-filter-btn" onclick="toggleBookmarkFilter()">⊙ Bookmarked (<span id="bm-count">0</span>)</button>
       </div>
+      <div class="word-search-wrap">
+        <input class="word-search-input" id="word-search-input" type="text" placeholder="Search words…" oninput="onWordSearch(this.value)" autocomplete="off" />
+        <button class="word-search-clear" id="word-search-clear" onclick="clearWordSearch()" title="Clear">✕</button>
+      </div>
       <div class="word-list" id="word-list"></div>
     </div>
 
@@ -1053,7 +1067,6 @@ function applyBgPreset(p, save=true) {
   if (save) {
     activeBgPreset = p.name;
     localStorage.setItem('sat-bg-preset', p.name);
-    localStorage.setItem('sat-theme', JSON.stringify(theme));
   }
   document.querySelectorAll('.bg-preset-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.name === p.name);
@@ -1225,8 +1238,8 @@ function loadTheme(e) {
     try {
       const d = JSON.parse(reader.result);
       if (d.accent && d.bg && d.surface && d.text) { theme = d; applyTheme(); }
-      else alert('Invalid theme file.');
-    } catch { alert('Could not read theme file.'); }
+      else showToast('Invalid theme file — missing required keys.');
+    } catch { showToast('Could not read theme file.'); }
   };
   reader.readAsText(file); e.target.value = '';
 }
@@ -1404,6 +1417,11 @@ function switchGroup(id) {
   _sessionGroupId = null;
   _bmFilterActive = false;
   _quizSource = 'all'; _focusSource = 'all';
+  _wordSearchQuery = '';
+  const _wsi = document.getElementById('word-search-input');
+  if (_wsi) _wsi.value = '';
+  const _wsc = document.getElementById('word-search-clear');
+  if (_wsc) _wsc.style.display = 'none';
   const _bmfb = document.getElementById('bm-filter-btn');
   if (_bmfb) _bmfb.classList.remove('active');
   saveGroups();
@@ -1730,10 +1748,10 @@ function selectFocusSource(src) {
 
 function startQuiz() {
   _sessionGroupId = activeGroupId;
-  if (words.length < 2) { alert('Add at least 2 words first.'); return; }
+  if (words.length < 2) { showToast('Add at least 2 words first.'); return; }
   if (quizMode === 'limited') {
     const v = parseInt(document.getElementById('quiz-limit').value);
-    if (isNaN(v) || v < 1) { alert('Enter a valid number of questions.'); return; }
+    if (isNaN(v) || v < 1) { showToast('Enter a valid number of questions.'); return; }
     quizLimit = Math.min(v, words.length);
   }
   quizQ = 0; quizCorrect = 0; quizCorrectWords = []; quizWrongWords = []; quizAsked = [];
@@ -1742,7 +1760,7 @@ function startQuiz() {
   let baseIdx = words.map((_,i)=>i);
   if (_quizSource === 'bookmarked') {
     baseIdx = baseIdx.filter(i => bm_q[words[i].word]);
-    if (baseIdx.length < 2) { alert('You need at least 2 bookmarked words to quiz.'); return; }
+    if (baseIdx.length < 2) { showToast('You need at least 2 bookmarked words to quiz.'); return; }
   }
   for (let i=baseIdx.length-1;i>0;i--) {
     const j=Math.floor(Math.random()*(i+1));
@@ -1866,7 +1884,7 @@ let focusMasteredSet = new Set();
 function downloadFocusJSON() {
   const indices = focusWrongIndices.length > 0 ? focusWrongIndices : focusSet;
   const data = indices.map(i => words[i]).filter(Boolean);
-  if (!data.length) { alert('No wrong words to download.'); return; }
+  if (!data.length) { showToast('No wrong words to download.'); return; }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'wrong-words.json'; a.click();
 }
@@ -1908,12 +1926,12 @@ function startFocus() {
   _sessionGroupId = activeGroupId;
   const raw = parseInt(document.getElementById('focus-count').value);
   const count = isNaN(raw) ? 10 : Math.max(2, Math.min(raw, words.length));
-  if (words.length < 2) { alert('Add at least 2 words first.'); return; }
+  if (words.length < 2) { showToast('Add at least 2 words first.'); return; }
   const bm_f = getBookmarks();
   let baseF = words.map((_,i)=>i);
   if (_focusSource === 'bookmarked') {
     baseF = baseF.filter(i => bm_f[words[i].word]);
-    if (baseF.length < 2) { alert('You need at least 2 bookmarked words to study.'); return; }
+    if (baseF.length < 2) { showToast('You need at least 2 bookmarked words to study.'); return; }
   }
   for (let i=baseF.length-1;i>0;i--) {
     const j=Math.floor(Math.random()*(i+1));
@@ -2473,14 +2491,14 @@ function importJSON(e) {
   reader.onload = () => {
     try {
       const d = JSON.parse(reader.result);
-      if (!Array.isArray(d)) { alert('Invalid JSON.'); return; }
+      if (!Array.isArray(d)) { showToast('Invalid JSON — expected an array of words.'); return; }
       pendingImportData = d;
       if (words.length > 0) {
         document.getElementById('import-modal').classList.add('open');
       } else {
         resolveImport(false);
       }
-    } catch { alert('Invalid JSON.'); }
+    } catch { showToast('Could not read file — invalid JSON.'); }
   };
   reader.readAsText(file); e.target.value='';
 }
@@ -2566,6 +2584,37 @@ function hideUndoToast() {
   lastDeletedWord = null;
 }
 
+// ── INLINE TOAST (replaces alert) ──
+let _toastTimer = null;
+function showToast(msg, durationMs) {
+  durationMs = durationMs || 3000;
+  const el = document.getElementById('inline-toast');
+  if (!el) return;
+  clearTimeout(_toastTimer);
+  el.textContent = msg;
+  el.classList.add('show');
+  _toastTimer = setTimeout(() => el.classList.remove('show'), durationMs);
+}
+
+// ── WORD SEARCH ──
+let _wordSearchQuery = '';
+
+function onWordSearch(val) {
+  _wordSearchQuery = val.trim().toLowerCase();
+  const clearBtn = document.getElementById('word-search-clear');
+  if (clearBtn) clearBtn.style.display = _wordSearchQuery ? 'block' : 'none';
+  renderWordList();
+}
+
+function clearWordSearch() {
+  _wordSearchQuery = '';
+  const inp = document.getElementById('word-search-input');
+  if (inp) inp.value = '';
+  const clearBtn = document.getElementById('word-search-clear');
+  if (clearBtn) clearBtn.style.display = 'none';
+  renderWordList();
+}
+
 // ── WORD LIST ──
 function renderWordList() {
   const list  = document.getElementById('word-list');
@@ -2577,6 +2626,15 @@ function renderWordList() {
   const isAll = ctx === 'all';
   let indices = isAll ? words.map((_,i)=>i) : ctx;
   if (_bmFilterActive) indices = indices.filter(i => words[i] && bm[words[i].word]);
+  if (_wordSearchQuery) {
+    indices = indices.filter(i => {
+      const w = words[i];
+      return w && (
+        w.word.toLowerCase().includes(_wordSearchQuery) ||
+        w.definition.toLowerCase().includes(_wordSearchQuery)
+      );
+    });
+  }
   if (count) count.textContent = indices.length;
   updateBookmarkCount();
   indices.forEach((wordIdx, posInContext) => {
@@ -2855,6 +2913,7 @@ document.addEventListener('keydown', e => {
     <button class="font-error-btn" onclick="closeFontErrorModal()">Got it</button>
   </div>
 </div>
+<div id="inline-toast" class="inline-toast"></div>
 
 </body>
 </html>
