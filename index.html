@@ -398,21 +398,21 @@
   /* Quiz fullscreen */
   .quiz-fullscreen-overlay {
     position: fixed; inset: 0; background: var(--bg); z-index: 800;
-    display: none; flex-direction: column; align-items: center; justify-content: flex-start;
-    padding: 80px 32px 40px;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    padding: 80px 32px 120px; gap: 24px;
   }
   .quiz-fullscreen-overlay.open { display: flex; }
   .quiz-fullscreen-top {
     position: absolute; top: 20px; left: 0; right: 0;
     display: flex; align-items: center; justify-content: space-between; padding: 0 28px;
   }
-  .quiz-fullscreen-word { font-family: var(--font-display); font-size: clamp(1.8rem, 4vw, 2.8rem); color: var(--accent); text-align: center; margin: 0 auto 32px; width: min(560px, 90vw); }
-  .quiz-fullscreen-options { display: flex; flex-direction: column; gap: 10px; width: min(560px, 90vw); }
+  .quiz-fullscreen-options { display: flex; flex-direction: column; gap: 10px; width: min(560px, 90vw); position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); }
   .quiz-fullscreen-options .option { font-size: 0.82rem; padding: 12px 16px; }
   .quiz-fullscreen-feedback { font-family: var(--font-mono); font-size: 0.85rem; }
   .quiz-fullscreen-score { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); }
-  .qfs-bottom { position: absolute; bottom: 36px; right: 40px; display: flex; align-items: center; gap: 16px; }
-  .qfs-feedback-bottom { font-family: var(--font-mono); font-size: 0.82rem; }
+  .qfs-bottom { position: absolute; bottom: 28px; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 20px; padding: 0 40px; }
+  .qfs-next-btn { background: var(--accent); color: #000; border: none; border-radius: 999px; font-size: 1.3rem; width: 48px; height: 48px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.15s, opacity 0.15s; font-family: var(--font-mono); }
+  .qfs-next-btn:hover { transform: scale(1.1); }
   /* Star bookmark — plain text star, no border box */
   .qfs-bm-star { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--muted); padding: 0 4px; line-height: 1; transition: color 0.15s, transform 0.1s; }
   .qfs-bm-star:hover { color: #f0c040; transform: scale(1.15); }
@@ -2737,8 +2737,30 @@ function resetPreset() {
 function closeResetModal() {
   document.getElementById('reset-preset-modal').classList.remove('open');
 }
+function clearGroupAnalytics(groupId) {
+  // Wipe SRS schedule and word analytics for all words in a group
+  const grp = groups.find(g => g.id === groupId);
+  if (!grp) return;
+  const wordSet = new Set(grp.words.map(w => w.word));
+  // Clear SRS records for these words
+  const srsAll = JSON.parse(localStorage.getItem('sat-srs') || '{}');
+  if (srsAll[groupId]) {
+    Object.keys(srsAll[groupId]).forEach(w => { if (wordSet.has(w)) delete srsAll[groupId][w]; });
+    localStorage.setItem('sat-srs', JSON.stringify(srsAll));
+  }
+  // Clear daily SRS record for this group
+  const daily = JSON.parse(localStorage.getItem('sat-srs-daily') || '{}');
+  if (daily[groupId]) { delete daily[groupId]; localStorage.setItem('sat-srs-daily', JSON.stringify(daily)); }
+  // Clear word-level analytics for these words
+  const wa = JSON.parse(localStorage.getItem('sat-word-analytics') || '{}');
+  wordSet.forEach(w => { delete wa[w]; });
+  localStorage.setItem('sat-word-analytics', JSON.stringify(wa));
+}
+
 function confirmResetPreset() {
   closeResetModal();
+  // Clear analytics before resetting words
+  clearGroupAnalytics(SAT_PRESET_ID);
   const g = groups.find(x => x.id === SAT_PRESET_ID);
   if (g) { g.words = SAT_PRESET_WORDS.map(w => ({...w})); }
   if (activeGroupId === SAT_PRESET_ID) {
@@ -4495,11 +4517,20 @@ document.addEventListener('keydown', e => {
   <div class="fc-fullscreen-progress" style="position:absolute;top:52px;left:28px;right:28px;width:auto;">
     <div class="fc-fullscreen-progress-bar" id="qfs-progress-bar" style="width:0%"></div>
   </div>
-  <div class="quiz-fullscreen-word" id="qfs-word">—</div>
+  <!-- Card — same look as flashcard -->
+  <div class="fc-fullscreen-card-wrap" style="cursor:default;">
+    <div class="card" id="qfs-card" style="transform:none!important;">
+      <div class="card-face card-front" style="transform:none!important;backface-visibility:visible!important;-webkit-backface-visibility:visible!important;">
+        <div class="card-word" id="qfs-word">—</div>
+      </div>
+    </div>
+  </div>
+  <!-- Choices below card -->
   <div class="quiz-fullscreen-options" id="qfs-options"></div>
+  <!-- Bottom bar: feedback + next arrow -->
   <div class="qfs-bottom">
-    <span class="qfs-feedback-bottom" id="qfs-feedback"></span>
-    <button class="btn" id="qfs-next" style="display:none;font-size:1rem;padding:10px 24px;" onclick="qfsNext()">→</button>
+    <span class="quiz-fullscreen-feedback" id="qfs-feedback"></span>
+    <button class="qfs-next-btn" id="qfs-next" style="display:none;" onclick="qfsNext()">→</button>
   </div>
 </div>
 
