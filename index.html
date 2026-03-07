@@ -2645,7 +2645,28 @@ renderWordList();
 updateBookmarkCount();
 const _lbl = document.getElementById('active-group-label');
 if (_lbl) _lbl.textContent = (getActiveGroup() || { name: '' }).name;
-showHome();
+
+// Only show the home/landing page for first-time visitors.
+// If the user already has groups or any saved data, go straight to the app.
+(function initNav() {
+  const hasGroups   = groups.length > 0;
+  const hasTheme    = !!localStorage.getItem('sat-theme2');
+  const hasPreset   = !!localStorage.getItem('sat-bg-preset');
+  const hasActive   = !!localStorage.getItem('sat-active-group');
+  const returningUser = hasGroups || hasTheme || hasPreset || hasActive;
+
+  if (returningUser) {
+    // Hide the home page entirely and go straight to groups picker
+    const hp = document.getElementById('home-page');
+    hp.style.display = 'none';
+    const wm = document.getElementById('sat-wordmark');
+    if (wm) wm.style.display = 'none';
+    showGroupsPage();
+  } else {
+    // Brand new visitor — show the landing page
+    showHome();
+  }
+})();
 
 </script>
 
