@@ -393,7 +393,37 @@
   .fc-fullscreen-card-wrap { perspective: 1200px; width: min(560px, 90vw); height: 340px; cursor: pointer; }
   .fc-fullscreen-controls { display: flex; align-items: center; gap: 20px; }
   .fc-fullscreen-progress { width: min(560px, 90vw); height: 6px; background: rgba(255,255,255,0.1); border-radius: 999px; overflow: hidden; }
-  .fc-fullscreen-progress-bar { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s ease; }
+  .fc-fullscreen-progress-bar { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s ease; }  .fc-fullscreen-progress-bar { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s ease; }
+
+  /* Quiz fullscreen */
+  .quiz-fullscreen-overlay {
+    position: fixed; inset: 0; background: var(--bg); z-index: 800;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    padding: 60px 32px 40px; gap: 20px;
+  }
+  .quiz-fullscreen-overlay.open { display: flex; }
+  .quiz-fullscreen-top {
+    position: absolute; top: 20px; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 28px;
+  }
+  .quiz-fullscreen-options { display: flex; flex-direction: column; gap: 8px; width: 100%; padding: 8px; box-sizing: border-box; }
+  .quiz-fullscreen-options .option { font-size: 0.8rem; padding: 10px 14px; }
+  .quiz-fullscreen-feedback { font-family: var(--font-mono); font-size: 0.85rem; text-align: center; min-height: 24px; }
+  .quiz-fullscreen-score { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); }
+
+  /* SRS fullscreen */
+  .srs-fullscreen-overlay {
+    position: fixed; inset: 0; background: var(--bg); z-index: 800;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    padding: 60px 32px 40px; gap: 20px;
+  }
+  .srs-fullscreen-overlay.open { display: flex; }
+  .srs-fullscreen-top {
+    position: absolute; top: 20px; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 28px;
+  }
+  .srs-fullscreen-hint { font-size: 0.68rem; color: var(--muted); font-family: var(--font-mono); text-align: center; min-height: 16px; }
+  .srs-fullscreen-ratings { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
 
   /* FONT NOT FOUND MODAL */
   .font-error-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; display: none; align-items: center; justify-content: center; }
@@ -711,7 +741,10 @@
       <div id="quiz-active" style="display:none;">
         <div class="quiz-header">
           <span class="quiz-progress" id="q-progress"></span>
-          <button class="btn btn-danger" onclick="endQuiz()" style="padding:6px 14px;font-size:0.72rem;">Stop</button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="fc-bm-btn" id="q-bm-btn" onclick="quizToggleBookmark()" title="Bookmark this word">☆</button>
+            <button class="btn btn-danger" onclick="endQuiz()" style="padding:6px 14px;font-size:0.72rem;">Stop</button>
+          </div>
         </div>
         <div class="quiz-word" id="q-word">—</div>
         <div class="options" id="q-options"></div>
@@ -761,15 +794,12 @@
             <div class="srs-setting-label">Daily limit<span>Max words per session (0 = no limit)</span></div>
             <input class="srs-setting-input" id="srs-limit-input" type="number" min="0" max="9999" placeholder="∞" oninput="saveSRSSettings()" />
           </div>
-          <div class="srs-setting-row">
-            <div class="srs-setting-label">New words cap<span>Max new words per day</span></div>
-            <input class="srs-setting-input" id="srs-new-cap-input" type="number" min="0" max="9999" placeholder="∞" oninput="saveSRSSettings()" />
-          </div>
+
           <div style="border-top:1px solid var(--border);margin:12px 0 12px;"></div>
           <div class="srs-setting-label" style="margin-bottom:8px;">Review data<span>Back up or restore your schedule across devices</span></div>
           <div style="display:flex;gap:8px;">
-            <button class="btn" style="flex:1;font-size:0.7rem;padding:7px 0;" onclick="exportSRSData()">↓ Export</button>
-            <label class="btn" style="flex:1;font-size:0.7rem;padding:7px 0;cursor:pointer;text-align:center;">↑ Import<input type="file" accept=".json" style="display:none;" onchange="importSRSData(event)" /></label>
+            <button class="btn" style="flex:1;font-size:0.7rem;padding:7px 0;" onclick="exportSRSData()">↓ Export all data</button>
+            <label class="btn" style="flex:1;font-size:0.7rem;padding:7px 0;cursor:pointer;text-align:center;">↑ Import backup<input type="file" accept=".json" style="display:none;" onchange="importSRSData(event)" /></label>
           </div>
         </div>
       </div>
@@ -2804,8 +2834,8 @@ function updateShuffleBtn() {
 document.addEventListener('keydown', function(e) {
   if (activeMode !== 'flash') return;
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); nextCard(); }
-  else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prevCard(); }
+  if (e.key === 'ArrowRight') { e.preventDefault(); nextCard(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); prevCard(); }
   else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flipCard(); }
 });
 
@@ -2883,6 +2913,7 @@ function startQuiz() {
   document.getElementById('quiz-results').style.display = 'none';
   document.getElementById('quiz-active').style.display = 'block';
   nextQuestion();
+  openFullscreenQuiz();
 }
 
 function nextQuestion() {
@@ -2898,6 +2929,7 @@ function nextQuestion() {
   if (quizAsked.length >= activePool.length) quizAsked = [];
   quizCorrectIdx = ci;
   document.getElementById('q-word').textContent = words[ci].word;
+  syncQuizInlineBookmark();
   const label = quizMode === 'limited' ? `${quizQ+1} / ${quizPool.length}` : `Q${quizQ+1}`;
   document.getElementById('q-progress').textContent = label;
   document.getElementById('q-live-score').textContent = quizQ > 0 ? `${quizCorrect} / ${quizQ} correct` : '';
@@ -2914,6 +2946,7 @@ function nextQuestion() {
     btn.onclick = () => answerQ(btn, idx === ci, ci);
     container.appendChild(btn);
   });
+  if (_qfsOpen) qfsNewCard();
 }
 
 function answerQ(btn, isCorrect, ci) {
@@ -2934,6 +2967,10 @@ function answerQ(btn, isCorrect, ci) {
     quizWrongWords.push(words[ci].word);
   }
   document.querySelectorAll('.option').forEach(o => o.disabled = true);
+  if (_qfsOpen) {
+    document.getElementById('qfs-card').classList.add('flipped');
+    syncQFS();
+  }
   document.getElementById('q-live-score').textContent = `${quizCorrect} / ${quizQ} correct`;
   if (quizMode === 'limited' && quizQ >= quizLimit) {
     document.getElementById('q-next').textContent = 'See Results →';
@@ -2942,11 +2979,13 @@ function answerQ(btn, isCorrect, ci) {
 }
 
 function endQuiz() {
+  if (_qfsOpen) closeFullscreenQuiz();
   if (quizQ === 0) { showQuizSetup(); return; }
   showResults();
 }
 
 function showResults() {
+  if (_qfsOpen) closeFullscreenQuiz();
   document.getElementById('quiz-active').style.display = 'none';
   document.getElementById('quiz-results').style.display = 'block';
   const pct = quizQ === 0 ? 0 : Math.round((quizCorrect / quizQ) * 100);
@@ -3045,30 +3084,14 @@ function markNewWordsSeen(wordStrArr) {
 function getSRSDueWords() {
   const today = todayStr();
   const srs = getGroupSRS();
-  const daily = getDailyRecord();
-  const newCap = _srsSettings.newCap || Infinity;
-  // How many new words has this group already seen today
-  const alreadyNewToday = daily.newSeen.length;
-
-  const reviewDue = [];  // interval-due (always included)
-  const newDue = [];     // brand-new words (capped)
-
+  const reviewDue = [];
+  const newDue = [];
   words.forEach((w, i) => {
     const rec = srs[w.word];
-    if (!rec) {
-      // New word — only show if: already seen today (re-opening mid-session) OR under cap
-      if (daily.newSeen.includes(w.word)) {
-        newDue.push(i); // already counted today, always include
-      } else if (newDue.length + alreadyNewToday < newCap) {
-        newDue.push(i);
-      }
-      // else: new-word cap hit, skip until tomorrow
-    } else if (rec.due <= today) {
-      reviewDue.push(i); // scheduled review, always include
-    }
+    if (!rec) newDue.push(i);
+    else if (rec.due <= today) reviewDue.push(i);
   });
-
-  // Interleave: reviews first, then new words, respecting total daily limit
+  // Reviews first, then new words
   const combined = [...reviewDue, ...newDue];
   const limit = _srsSettings.limit || Infinity;
   return combined.slice(0, limit);
@@ -3127,19 +3150,23 @@ let _srsQueue = [];     // array of word indices for this session
 let _srsSessionIdx = 0; // current position in queue
 let _srsResults = {};   // wordIdx -> 'hard'|'mid'|'easy'
 let _srsStartTime = null;
-let _srsSettings = { limit: 0, newCap: 0 }; // 0 = unlimited
+let _srsSettings = { limit: 0 }; // 0 = unlimited
 
 function exportSRSData() {
-  const data = {
-    version: 1,
-    exported: new Date().toISOString(),
-    srs: JSON.parse(localStorage.getItem('sat-srs') || '{}'),
-    daily: JSON.parse(localStorage.getItem('sat-srs-daily') || '{}')
-  };
+  // Full app backup — groups, words, bookmarks, analytics, SRS schedule
+  const keys = ['sat-groups','sat-active-group','sat-theme2','sat-bg-preset',
+    'sat-font-theme','sat-custom-display-font','sat-custom-mono-font',
+    'sat-bookmarks','sat-stats','sat-word-analytics','sat-fc-idx',
+    'sat-srs','sat-srs-settings','sat-srs-daily'];
+  const data = { version: 2, exported: new Date().toISOString() };
+  keys.forEach(k => {
+    const v = localStorage.getItem(k);
+    if (v) data[k] = JSON.parse(v);
+  });
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `sat-srs-backup-${todayStr()}.json`;
+  a.download = `sat-words-backup-${todayStr()}.json`;
   a.click();
 }
 
@@ -3150,26 +3177,34 @@ function importSRSData(event) {
   reader.onload = e => {
     try {
       const data = JSON.parse(e.target.result);
-      const srsData = data.srs || data; // support both wrapped and raw formats
-      // Merge SRS schedules
-      const existing = JSON.parse(localStorage.getItem('sat-srs') || '{}');
-      const merged = Object.assign({}, existing);
-      Object.keys(srsData).forEach(groupId => {
-        merged[groupId] = Object.assign({}, existing[groupId] || {}, srsData[groupId]);
-      });
-      localStorage.setItem('sat-srs', JSON.stringify(merged));
-      // Merge daily records if present
+      // v2: full backup — restore all keys directly
+      if (data.version === 2) {
+        const keys = ['sat-groups','sat-active-group','sat-theme2','sat-bg-preset',
+          'sat-font-theme','sat-custom-display-font','sat-custom-mono-font',
+          'sat-bookmarks','sat-stats','sat-word-analytics','sat-fc-idx',
+          'sat-srs','sat-srs-settings','sat-srs-daily'];
+        keys.forEach(k => { if (data[k] !== undefined) localStorage.setItem(k, JSON.stringify(data[k])); });
+        showToast('Full backup restored ✓ — reloading…');
+        setTimeout(() => location.reload(), 1200);
+        return;
+      }
+      // v1 legacy: SRS-only merge
+      if (data.srs) {
+        const existing = JSON.parse(localStorage.getItem('sat-srs') || '{}');
+        const merged = Object.assign({}, existing);
+        Object.keys(data.srs).forEach(g => { merged[g] = Object.assign({}, existing[g] || {}, data.srs[g]); });
+        localStorage.setItem('sat-srs', JSON.stringify(merged));
+      }
       if (data.daily) {
-        const existingDaily = JSON.parse(localStorage.getItem('sat-srs-daily') || '{}');
-        const mergedDaily = Object.assign({}, existingDaily, data.daily);
-        localStorage.setItem('sat-srs-daily', JSON.stringify(mergedDaily));
+        const ed = JSON.parse(localStorage.getItem('sat-srs-daily') || '{}');
+        localStorage.setItem('sat-srs-daily', JSON.stringify(Object.assign({}, ed, data.daily)));
       }
       showToast('SRS data imported ✓');
       buildSRSSetup();
     } catch {
       showToast('Invalid file — import failed.');
     }
-    event.target.value = ''; // reset so same file can be re-imported
+    event.target.value = '';
   };
   reader.readAsText(file);
 }
@@ -3181,20 +3216,16 @@ function toggleSRSSettings() {
 
 function loadSRSSettings() {
   const saved = JSON.parse(localStorage.getItem('sat-srs-settings') || '{}');
-  _srsSettings = { limit: saved.limit || 0, newCap: saved.newCap || 0 };
+  _srsSettings = { limit: saved.limit || 0 };
   const limitEl = document.getElementById('srs-limit-input');
-  const newCapEl = document.getElementById('srs-new-cap-input');
   if (limitEl) limitEl.value = _srsSettings.limit || '';
-  if (newCapEl) newCapEl.value = _srsSettings.newCap || '';
 }
 
 function saveSRSSettings() {
   const limitEl = document.getElementById('srs-limit-input');
-  const newCapEl = document.getElementById('srs-new-cap-input');
   _srsSettings.limit = parseInt(limitEl?.value) || 0;
-  _srsSettings.newCap = parseInt(newCapEl?.value) || 0;
   localStorage.setItem('sat-srs-settings', JSON.stringify(_srsSettings));
-  buildSRSSetup(); // refresh the due count to reflect new limits
+  buildSRSSetup();
 }
 
 function buildSRSSetup() {
@@ -3217,14 +3248,9 @@ function buildSRSSetup() {
     const srs = getGroupSRS();
     const newCount = due.filter(i => !srs[words[i].word]).length;
     const reviewCount = dueCount - newCount;
-    const daily = getDailyRecord();
-    const newCap = _srsSettings.newCap || Infinity;
     const parts = [];
     if (reviewCount > 0) parts.push(`${reviewCount} review`);
-    if (newCount > 0) {
-      const remaining = isFinite(newCap) ? `${newCount} new (${daily.newSeen.length}/${newCap} today)` : `${newCount} new`;
-      parts.push(remaining);
-    }
+    if (newCount > 0) parts.push(`${newCount} new`);
     metaEl.textContent = parts.join(' · ');
   } else {
     countEl.textContent = '0';
@@ -3264,6 +3290,7 @@ function startSRS() {
   document.getElementById('focus-results').style.display = 'none';
   document.getElementById('focus-card-wrap').style.display = 'flex';
   showSRSCard();
+  openFullscreenSRS();
 }
 
 function showSRSCard() {
@@ -3283,6 +3310,7 @@ function showSRSCard() {
   const progressFill = document.getElementById('srs-progress-fill');
   const pct = Math.round((_srsSessionIdx / _srsQueue.length) * 100);
   if (progressFill) progressFill.style.width = pct + '%';
+  if (_srsfsOpen) srsfsSync();
 }
 
 function flipFocusCard() {
@@ -3305,6 +3333,7 @@ function rateFocus(rating) {
 }
 
 function showSRSResults() {
+  if (_srsfsOpen) closeFullscreenSRS();
   stopWordTimer();
   document.getElementById('focus-card-wrap').style.display = 'none';
   document.getElementById('focus-results').style.display = 'block';
@@ -3342,6 +3371,7 @@ function showSRSResults() {
 }
 
 function resetFocusSetup() {
+  if (_srsfsOpen) closeFullscreenSRS();
   focusFromQuiz = false;
   stopWordTimer();
   document.getElementById('focus-setup').style.display = 'block';
@@ -3379,6 +3409,7 @@ function studyWrong() {
   refreshWordListForMode();
   updateShuffleBtn();
   showSRSCard();
+  openFullscreenSRS();
   ctxQuiz = 'all';
   quizPool = []; quizAsked = [];
   document.getElementById('quiz-setup').style.display = 'block';
@@ -3742,15 +3773,181 @@ function fcoNav(dir) {
   syncFullscreenCard();
 }
 
-// Keyboard: also handle fullscreen
+// ── QUIZ FULLSCREEN ──
+let _qfsOpen = false;
+
+function openFullscreenQuiz() {
+  _qfsOpen = true;
+  document.getElementById('quiz-fullscreen-overlay').classList.add('open');
+  qfsNewCard(); // show word, reset flip
+}
+
+function closeFullscreenQuiz() {
+  _qfsOpen = false;
+  document.getElementById('quiz-fullscreen-overlay').classList.remove('open');
+}
+
+function qfsNewCard() {
+  if (!_qfsOpen) return;
+  // Reset card to unflipped (word side)
+  document.getElementById('qfs-card').classList.remove('flipped');
+  document.getElementById('qfs-feedback').textContent = '';
+  document.getElementById('qfs-feedback').style.color = '';
+  document.getElementById('qfs-next').style.display = 'none';
+  // Sync word + meta from inline quiz
+  document.getElementById('qfs-word').textContent = document.getElementById('q-word').textContent;
+  document.getElementById('qfs-progress').textContent = document.getElementById('q-progress').textContent;
+  document.getElementById('qfs-score').textContent = document.getElementById('q-live-score').textContent;
+  // Clone options into card back (hidden until flip)
+  const srcOpts = document.getElementById('q-options');
+  const dstOpts = document.getElementById('qfs-options');
+  dstOpts.innerHTML = srcOpts.innerHTML;
+  dstOpts.querySelectorAll('.option').forEach((btn, i) => {
+    const srcBtn = srcOpts.querySelectorAll('.option')[i];
+    btn.onclick = () => { if (srcBtn && !srcBtn.disabled) srcBtn.click(); };
+  });
+  // Progress bar
+  const prog = document.getElementById('q-progress').textContent;
+  const m = prog.match(/(\d+)\s*\/\s*(\d+)/);
+  if (m) document.getElementById('qfs-progress-bar').style.width = Math.round((parseInt(m[1])/parseInt(m[2]))*100) + '%';
+  // Sync bookmark
+  syncQFSBookmark();
+}
+
+function syncQFS() {
+  // Called after answer — sync result state without resetting flip
+  if (!_qfsOpen) return;
+  const feedback = document.getElementById('q-feedback').textContent;
+  const nextVisible = document.getElementById('q-next').style.display !== 'none';
+  document.getElementById('qfs-feedback').textContent = feedback;
+  document.getElementById('qfs-feedback').style.color = document.getElementById('q-feedback').style.color;
+  document.getElementById('qfs-next').style.display = nextVisible ? 'inline-block' : 'none';
+  document.getElementById('qfs-score').textContent = document.getElementById('q-live-score').textContent;
+  // Sync option highlight state
+  const srcOpts = document.getElementById('q-options').querySelectorAll('.option');
+  const dstOpts = document.getElementById('qfs-options').querySelectorAll('.option');
+  srcOpts.forEach((src, i) => {
+    if (dstOpts[i]) {
+      dstOpts[i].className = src.className;
+      dstOpts[i].disabled = src.disabled;
+    }
+  });
+}
+
+function qfsFlipCard() {
+  if (quizAnswered) return; // already answered, don't re-flip
+  document.getElementById('qfs-card').classList.toggle('flipped');
+}
+
+function syncQFSBookmark() {
+  if (!_qfsOpen) return;
+  const bm = getBookmarks();
+  const word = document.getElementById('qfs-word').textContent;
+  const active = !!bm[word];
+  const btn = document.getElementById('qfs-bm-btn');
+  if (btn) { btn.textContent = active ? '★' : '☆'; btn.classList.toggle('active', active); }
+}
+
+function qfsToggleBookmark() {
+  const word = document.getElementById('qfs-word').textContent;
+  if (!word || word === '—') return;
+  const bm = getBookmarks();
+  if (bm[word]) delete bm[word]; else bm[word] = true;
+  saveBookmarks(bm);
+  syncQFSBookmark();
+  // Also sync inline quiz bookmark
+  syncQuizInlineBookmark();
+}
+
+function syncQuizInlineBookmark() {
+  const word = document.getElementById('q-word').textContent;
+  if (!word) return;
+  const bm = getBookmarks();
+  const active = !!bm[word];
+  const btn = document.getElementById('q-bm-btn');
+  if (btn) { btn.textContent = active ? '★' : '☆'; btn.classList.toggle('active', active); }
+}
+
+function quizToggleBookmark() {
+  const word = document.getElementById('q-word').textContent;
+  if (!word || word === '—') return;
+  const bm = getBookmarks();
+  if (bm[word]) delete bm[word]; else bm[word] = true;
+  saveBookmarks(bm);
+  syncQuizInlineBookmark();
+  syncQFSBookmark();
+}
+
+function qfsNext() {
+  nextQuestion();
+}
+
+// ── SRS FULLSCREEN ──
+let _srsfsOpen = false;
+
+function openFullscreenSRS() {
+  _srsfsOpen = true;
+  document.getElementById('srs-fullscreen-overlay').classList.add('open');
+  srsfsSync();
+}
+
+function closeFullscreenSRS() {
+  _srsfsOpen = false;
+  document.getElementById('srs-fullscreen-overlay').classList.remove('open');
+}
+
+function srsfsSync() {
+  if (!_srsfsOpen) return;
+  const wi = _srsQueue[_srsSessionIdx - 1] ?? _srsQueue[0];
+  if (wi === undefined || !words[wi]) return;
+  // Card is already shown via showSRSCard; mirror values
+  document.getElementById('srsfs-word').textContent = document.getElementById('foc-word').textContent;
+  document.getElementById('srsfs-def').textContent = document.getElementById('foc-def').textContent;
+  document.getElementById('srsfs-hint').textContent = document.getElementById('srs-interval-hint').textContent;
+  document.getElementById('srsfs-counter').textContent = document.getElementById('foc-counter').textContent;
+  document.getElementById('srsfs-card').classList.remove('flipped');
+  const pct = Math.round((_srsSessionIdx / _srsQueue.length) * 100);
+  document.getElementById('srsfs-progress-bar').style.width = pct + '%';
+}
+
+function srsfsFlip() {
+  document.getElementById('srsfs-card').classList.toggle('flipped');
+  // Also flip underlying card so state stays in sync
+  document.getElementById('focus-card').classList.toggle('flipped');
+}
+
+function srsfsRate(rating) {
+  rateFocus(rating); // delegates to main rateFocus which advances session
+}
+
+// ── KEYBOARD: quiz and SRS fullscreen ──
+// ── KEYBOARD: also handle fullscreen
+
 const _origKeydown = document.onkeydown;
 document.addEventListener('keydown', function(e) {
   if (!_fcoOpen) return;
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); fcoNav(1); }
-  else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); fcoNav(-1); }
+  if (e.key === 'ArrowRight') { e.preventDefault(); fcoNav(1); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); fcoNav(-1); }
   else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flipFullscreenCard(); }
   else if (e.key === 'Escape') { closeFullscreenFlash(); }
+});
+
+document.addEventListener('keydown', function(e) {
+  if (!_qfsOpen) return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const n = document.getElementById('qfs-next'); if (n && n.style.display !== 'none') qfsNext(); }
+  else if (e.key === 'Escape') { closeFullscreenQuiz(); }
+});
+
+document.addEventListener('keydown', function(e) {
+  if (!_srsfsOpen) return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); srsfsFlip(); }
+  else if (e.key === '1') srsfsRate('hard');
+  else if (e.key === '2') srsfsRate('mid');
+  else if (e.key === '3') srsfsRate('easy');
+  else if (e.key === 'Escape') { closeFullscreenSRS(); }
 });
 
 function toggleBookmarkFilter() {
@@ -4281,6 +4478,52 @@ document.addEventListener('keydown', e => {
     padding:4px 12px; font-size:0.8rem; cursor:pointer; font-weight:600;
   ">Undo</button>
 </div>
+<div class="quiz-fullscreen-overlay" id="quiz-fullscreen-overlay">
+  <div class="quiz-fullscreen-top">
+    <span class="fc-fullscreen-counter" id="qfs-progress"></span>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <span class="quiz-fullscreen-score" id="qfs-score"></span>
+      <button class="fc-fullscreen-bm" id="qfs-bm-btn" onclick="qfsToggleBookmark()" title="Bookmark">☆</button>
+      <button class="fc-fullscreen-exit" onclick="closeFullscreenQuiz()">✕ Exit Focus</button>
+    </div>
+  </div>
+  <div class="fc-fullscreen-progress" style="position:absolute;top:52px;left:28px;right:28px;width:auto;">
+    <div class="fc-fullscreen-progress-bar" id="qfs-progress-bar" style="width:0%"></div>
+  </div>
+  <div class="fc-fullscreen-card-wrap" onclick="qfsFlipCard()" id="qfs-card-wrap">
+    <div class="card" id="qfs-card">
+      <div class="card-face card-front"><div class="card-word" id="qfs-word">—</div><div class="card-hint">click to see options</div></div>
+      <div class="card-face card-back">
+        <div class="quiz-fullscreen-options" id="qfs-options"></div>
+      </div>
+    </div>
+  </div>
+  <div class="quiz-fullscreen-feedback" id="qfs-feedback"></div>
+  <button class="btn" id="qfs-next" style="display:none;" onclick="qfsNext()">Next →</button>
+</div>
+
+<div class="srs-fullscreen-overlay" id="srs-fullscreen-overlay">
+  <div class="srs-fullscreen-top">
+    <span class="fc-fullscreen-counter" id="srsfs-counter"></span>
+    <button class="fc-fullscreen-exit" onclick="closeFullscreenSRS()">✕ Exit Focus</button>
+  </div>
+  <div class="fc-fullscreen-progress" style="position:absolute;top:52px;left:28px;right:28px;width:auto;">
+    <div class="fc-fullscreen-progress-bar" id="srsfs-progress-bar" style="width:0%"></div>
+  </div>
+  <div class="srs-fullscreen-hint" id="srsfs-hint"></div>
+  <div class="fc-fullscreen-card-wrap" onclick="srsfsFlip()">
+    <div class="card" id="srsfs-card">
+      <div class="card-face card-front"><div class="card-word" id="srsfs-word">—</div><div class="card-hint">click to reveal</div></div>
+      <div class="card-face card-back"><div class="card-def" id="srsfs-def">—</div></div>
+    </div>
+  </div>
+  <div class="srs-fullscreen-ratings" id="srsfs-ratings">
+    <button class="rating-btn rating-hard" onclick="srsfsRate('hard')">✗ Don't know<span class="rating-hint">+1 day</span></button>
+    <button class="rating-btn rating-mid" onclick="srsfsRate('mid')">~ Kinda<span class="rating-hint">same</span></button>
+    <button class="rating-btn rating-easy" onclick="srsfsRate('easy')">✓ Know it<span class="rating-hint">interval ×</span></button>
+  </div>
+</div>
+
 <div class="fc-fullscreen-overlay" id="fc-fullscreen-overlay">
   <div class="fc-fullscreen-top">
     <span class="fc-fullscreen-counter" id="fco-counter">0 / 0</span>
