@@ -2759,16 +2759,27 @@ function clearGroupAnalytics(groupId) {
 
 function confirmResetPreset() {
   closeResetModal();
-  // Clear analytics before resetting words
-  clearGroupAnalytics(SAT_PRESET_ID);
   const g = groups.find(x => x.id === SAT_PRESET_ID);
   if (g) { g.words = SAT_PRESET_WORDS.map(w => ({...w})); }
+  // Clear ALL analytics for this group
+  const srsAll = JSON.parse(localStorage.getItem('sat-srs') || '{}');
+  delete srsAll[SAT_PRESET_ID];
+  localStorage.setItem('sat-srs', JSON.stringify(srsAll));
+  const daily = JSON.parse(localStorage.getItem('sat-srs-daily') || '{}');
+  delete daily[SAT_PRESET_ID];
+  localStorage.setItem('sat-srs-daily', JSON.stringify(daily));
+  const wa = JSON.parse(localStorage.getItem('sat-word-analytics') || '{}');
+  delete wa[SAT_PRESET_ID];
+  localStorage.setItem('sat-word-analytics', JSON.stringify(wa));
   if (activeGroupId === SAT_PRESET_ID) {
     words = getActiveGroup().words;
     fcOrder = words.map((_,i)=>i); fcIdx = 0;
     showCard(); renderWordList();
+    if (activeMode === 'analytics') renderAnalytics();
+    if (activeMode === 'focus') { loadSRSSettings(); buildSRSSetup(); }
   }
   saveGroups(); renderGroupsPage();
+  showToast('Group reset — analytics cleared ✓');
 }
 
 function showGroupsPage() {
@@ -3810,48 +3821,59 @@ function closeFullscreenQuiz() {
   document.getElementById('quiz-fullscreen-overlay').classList.remove('open');
 }
 
+let _qfsCorrectIdx = null;
+
 function qfsNewCard() {
   if (!_qfsOpen) return;
+  _qfsCorrectIdx = quizCorrectIdx;
   document.getElementById('qfs-feedback').textContent = '';
   document.getElementById('qfs-feedback').style.color = '';
   document.getElementById('qfs-next').style.display = 'none';
-
-  document.getElementById('qfs-word').textContent = document.getElementById('q-word').textContent;
+  document.getElementById('qfs-word').textContent = words[_qfsCorrectIdx]?.word || '—';
   document.getElementById('qfs-progress').textContent = document.getElementById('q-progress').textContent;
-  document.getElementById('qfs-score').textContent = document.getElementById('q-live-score').textContent;
-  // Clone options — always visible, no flip needed
-  const srcOpts = document.getElementById('q-options');
-  const dstOpts = document.getElementById('qfs-options');
-  dstOpts.innerHTML = srcOpts.innerHTML;
-  dstOpts.querySelectorAll('.option').forEach((btn, i) => {
-    const srcBtn = srcOpts.querySelectorAll('.option')[i];
-    btn.onclick = () => { if (srcBtn && !srcBtn.disabled) srcBtn.click(); };
-  });
+  document.getElementById('qfs-score').textContent = '';
+  // Progress bar
   const prog = document.getElementById('q-progress').textContent;
-  const m = prog.match(/(\d+)\s*\/\s*(\d+)/);
-  if (m) document.getElementById('qfs-progress-bar').style.width = Math.round((parseInt(m[1])/parseInt(m[2]))*100) + '%';
+  const parts = prog.match(/(\d+)\s*\/\s*(\d+)/);
+  if (parts) document.getElementById('qfs-progress-bar').style.width = Math.round((parseInt(parts[1])/parseInt(parts[2]))*100) + '%';
+  // Build options independently — wired to qfsAnswer, never touch inline quiz
+  const container = document.getElementById('qfs-options');
+  container.innerHTML = '';
+  document.getElementById('q-options').querySelectorAll('.option').forEach(srcBtn => {
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.textContent = srcBtn.textContent;
+    const isCorrect = srcBtn.textContent === words[_qfsCorrectIdx]?.definition;
+    btn.onclick = () => qfsAnswer(btn, isCorrect, container);
+    container.appendChild(btn);
+  });
   syncQFSBookmark();
 }
 
-function syncQFS() {
-  // Called after answer — sync result state without resetting flip
-  if (!_qfsOpen) return;
-  const feedback = document.getElementById('q-feedback').textContent;
-  const nextVisible = document.getElementById('q-next').style.display !== 'none';
-  document.getElementById('qfs-feedback').textContent = feedback;
-  document.getElementById('qfs-feedback').style.color = document.getElementById('q-feedback').style.color;
-  document.getElementById('qfs-next').style.display = nextVisible ? 'flex' : 'none';
-  document.getElementById('qfs-score').textContent = document.getElementById('q-live-score').textContent;
-  // Sync option highlight state
-  const srcOpts = document.getElementById('q-options').querySelectorAll('.option');
-  const dstOpts = document.getElementById('qfs-options').querySelectorAll('.option');
-  srcOpts.forEach((src, i) => {
-    if (dstOpts[i]) {
-      dstOpts[i].className = src.className;
-      dstOpts[i].disabled = src.disabled;
-    }
+function qfsAnswer(btn, isCorrect, container) {
+  if (btn.disabled) return;
+  container.querySelectorAll('.option').forEach(o => o.disabled = true);
+  if (isCorrect) {
+    btn.classList.add('correct');
+    document.getElementById('qfs-feedback').textContent = '✓ Correct!';
+    document.getElementById('qfs-feedback').style.color = 'var(--accent)';
+  } else {
+    btn.classList.add('wrong');
+    container.querySelectorAll('.option').forEach(o => {
+      if (o.textContent === words[_qfsCorrectIdx]?.definition) o.classList.add('correct');
+    });
+    document.getElementById('qfs-feedback').textContent = '✗ Wrong';
+    document.getElementById('qfs-feedback').style.color = '#ff5555';
+  }
+  // Fire inline quiz answer to keep stats/analytics in sync
+  document.getElementById('q-options').querySelectorAll('.option').forEach(o => {
+    if (o.textContent === btn.textContent && !o.disabled) o.click();
   });
+  document.getElementById('qfs-next').style.display = 'flex';
+  document.getElementById('qfs-score').textContent = document.getElementById('q-live-score').textContent;
 }
+
+function syncQFS() { /* no-op — qfsNewCard/qfsAnswer handle everything */ }
 
 function syncQFSBookmark() {
   if (!_qfsOpen) return;
@@ -4518,17 +4540,17 @@ document.addEventListener('keydown', e => {
   <div class="fc-fullscreen-progress" style="position:absolute;top:52px;left:28px;right:28px;width:auto;">
     <div class="fc-fullscreen-progress-bar" id="qfs-progress-bar" style="width:0%"></div>
   </div>
-  <!-- Card — same look as flashcard -->
-  <div class="fc-fullscreen-card-wrap" style="cursor:default;">
-    <div class="card" id="qfs-card" style="transform:none!important;">
-      <div class="card-face card-front" style="transform:none!important;backface-visibility:visible!important;-webkit-backface-visibility:visible!important;">
+  <!-- Word card -->
+  <div class="fc-fullscreen-card-wrap" style="cursor:default;pointer-events:none;">
+    <div class="card" style="pointer-events:none;">
+      <div class="card-face card-front" style="backface-visibility:visible;-webkit-backface-visibility:visible;transform:rotateY(0deg);">
         <div class="card-word" id="qfs-word">—</div>
       </div>
     </div>
   </div>
-  <!-- Choices below card -->
+  <!-- Answer choices pinned below card -->
   <div class="quiz-fullscreen-options" id="qfs-options"></div>
-  <!-- Bottom bar: feedback + next arrow -->
+  <!-- Feedback left, next arrow right, both pinned to bottom -->
   <div class="qfs-bottom">
     <span class="quiz-fullscreen-feedback" id="qfs-feedback"></span>
     <button class="qfs-next-btn" id="qfs-next" style="display:none;" onclick="qfsNext()">→</button>
