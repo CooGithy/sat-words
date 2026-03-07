@@ -819,6 +819,28 @@ let _toastTimer = null;
 let _satPresetLoaded = false;
 let _fcIdxByGroup = {};
 let _newGroupType = 'empty';
+let _renameTargetId = null;
+let _deleteTargetId = null;
+let quizMode = 'infinite';
+let quizLimit = 0;
+let quizQ = 0, quizCorrect = 0;
+let quizPool = [];
+let quizAsked = [];
+let quizAnswered = false, quizCorrectIdx = 0;
+let quizCorrectWords = [], quizWrongWords = [];
+let focusSet = [], focusIdx = 0;
+let focusSessionDone = false;
+let focusWrongIndices = [];
+let focusFromQuiz = false;
+let focusQueue = [];
+let focusAttempt = 0;
+let focusStatus = {};
+let focusStartTime = null;
+let focusMasteredSet = new Set();
+let _fontTarget = 'display';
+let _fcoOpen = false;
+let pendingImportData = null;
+let lastDeletedWord = null;
 
 // ── STATS ──
 let appStats = JSON.parse(localStorage.getItem('sat-stats') || '{"quizzesTaken":0,"bestScore":0}');
@@ -2557,7 +2579,6 @@ function confirmNewGroup() {
   showGroupsPage();
 }
 
-let _renameTargetId = null;
 
 function renameGroup(id) {
   const g = groups.find(x => x.id === id); if (!g) return;
@@ -2589,7 +2610,6 @@ function confirmRenameGroup() {
   saveGroups(); renderGroupsPage();
 }
 
-let _deleteTargetId = null;
 
 function deleteGroup(id) {
   const g = groups.find(x => x.id === id); if (!g) return;
@@ -2735,13 +2755,6 @@ document.addEventListener('keydown', function(e) {
 });
 
 // ── QUIZ ──
-let quizMode = 'infinite';
-let quizLimit = 0;
-let quizQ = 0, quizCorrect = 0;
-let quizPool = [];
-let quizAsked = [];
-let quizAnswered = false, quizCorrectIdx = 0;
-let quizCorrectWords = [], quizWrongWords = [];
 
 function selectQuizMode(m) {
   quizMode = m;
@@ -2891,15 +2904,6 @@ function showQuizSetup() {
 }
 
 // ── FOCUSED STUDY ──
-let focusSet = [], focusIdx = 0;
-let focusSessionDone = false;
-let focusWrongIndices = [];
-let focusFromQuiz = false;
-let focusQueue = [];
-let focusAttempt = 0;
-let focusStatus = {};
-let focusStartTime = null;
-let focusMasteredSet = new Set();
 
 function downloadFocusJSON() {
   const indices = focusWrongIndices.length > 0 ? focusWrongIndices : focusSet;
@@ -3139,7 +3143,6 @@ function buildFontThemeUI() {
 })();
 
 // ── FONT SEARCH ──
-let _fontTarget = 'display';
 let _customDisplayFont = localStorage.getItem('sat-custom-display-font') || null;
 let _customMonoFont    = localStorage.getItem('sat-custom-mono-font')    || null;
 
@@ -3372,7 +3375,6 @@ function syncFcBmBtn() {
 }
 
 // ── FULLSCREEN FLASHCARD ──
-let _fcoOpen = false;
 
 function openFullscreenFlash() {
   _fcoOpen = true;
@@ -3502,7 +3504,6 @@ function downloadJSON() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'sat-words.json'; a.click();
 }
 
-let pendingImportData = null;
 
 function importJSON(e) {
   const file = e.target.files[0]; if (!file) return;
@@ -3532,7 +3533,6 @@ function resolveImport(merge) {
 }
 
 // ── DELETE / UNDO ──
-let lastDeletedWord = null;
 
 function showFocusDoneToast() {
   const t = document.getElementById('undo-toast');
