@@ -2374,26 +2374,17 @@ function migrateData() {
     if (!('preset' in grp)) { grp.preset = false; changed = true; }
     if (!Array.isArray(grp.words)) { grp.words = []; changed = true; }
   });
-  const seenIds = {}, seenNames = {};
+  const seenIds = {};
   const deduped = [];
   g.forEach(grp => {
-    const idKey   = grp.id;
-    const nameKey = grp.name.trim().toLowerCase();
+    const idKey = grp.id;
     if (seenIds[idKey] !== undefined) {
+      // Duplicate id: keep the one with more words
       const ei = seenIds[idKey];
       if (grp.words.length > deduped[ei].words.length) deduped[ei] = grp;
       changed = true;
-    } else if (seenNames[nameKey] !== undefined) {
-      const ei = seenNames[nameKey];
-      if (grp.id === SAT_PRESET_ID || grp.words.length > deduped[ei].words.length) {
-        seenIds[deduped[ei].id] = undefined;
-        deduped[ei] = grp;
-        seenIds[idKey] = ei;
-      }
-      changed = true;
     } else {
-      seenIds[idKey]     = deduped.length;
-      seenNames[nameKey] = deduped.length;
+      seenIds[idKey] = deduped.length;
       deduped.push(grp);
     }
   });
@@ -2486,7 +2477,19 @@ function switchGroup(id) {
     setTimeout(() => { hp.style.display = 'none'; }, 500);
   }
   hideGroupsPage();
-  switchMode('flash');
+  // If we were mid-session in quiz or focus, go to flash so the new group starts clean.
+  // But if we were just browsing the setup screen (no active session), stay in that mode.
+  const wasMode = activeMode;
+  const quizActive = document.getElementById('quiz-active') && document.getElementById('quiz-active').style.display !== 'none';
+  const quizResults = document.getElementById('quiz-results') && document.getElementById('quiz-results').style.display !== 'none';
+  const focusActive = document.getElementById('focus-card-wrap') && document.getElementById('focus-card-wrap').style.display !== 'none';
+  const focusResults = document.getElementById('focus-results') && document.getElementById('focus-results').style.display !== 'none';
+  const inActiveSession = quizActive || quizResults || focusActive || focusResults;
+  if (inActiveSession) {
+    switchMode('flash');
+  } else {
+    switchMode(wasMode || 'flash');
+  }
   showCard();
   renderWordList();
 }
