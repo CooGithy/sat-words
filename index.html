@@ -194,9 +194,9 @@
   .word-list-lbl { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
   .bm-filter-btn { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 3px 9px; font-size: 0.65rem; font-family: var(--font-mono); color: var(--muted); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 5px; }
   .bm-filter-btn:hover, .bm-filter-btn.active { border-color: var(--accent); color: var(--accent); }
-  .bm-icon { background: none; border: none; cursor: pointer; font-size: 0.9rem; padding: 0 4px; line-height: 1; opacity: 0.3; transition: opacity 0.15s; color: var(--accent); flex-shrink: 0; }
-  .bm-icon:hover { opacity: 0.7; }
-  .bm-icon.active { opacity: 1; }
+  .bm-icon { background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 0 4px; line-height: 1; transition: all 0.15s; color: var(--muted); flex-shrink: 0; }
+  .bm-icon:hover { color: #f0c040; transform: scale(1.2); }
+  .bm-icon.active { color: #f0c040; }
   .source-row { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
   .source-btn { background: none; border: 1px solid var(--border); border-radius: 999px; padding: 5px 14px; font-family: var(--font-mono); font-size: 0.68rem; color: var(--muted); cursor: pointer; transition: all 0.15s; }
   .source-btn:hover { border-color: var(--accent); color: var(--accent); }
@@ -330,6 +330,36 @@
 
   /* INLINE RENAME */
   .group-name-input { background: none; border: none; border-bottom: 1px solid var(--accent); color: var(--accent); font-family: var(--font-display); font-size: 1.1rem; outline: none; width: 100%; }
+
+  /* FLASHCARD BOOKMARK BUTTON (in flash-view header) */
+  .fc-bm-btn { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; font-size: 1rem; cursor: pointer; transition: all 0.15s; color: var(--muted); line-height: 1; }
+  .fc-bm-btn:hover { border-color: #f0c040; color: #f0c040; }
+  .fc-bm-btn.active { border-color: #f0c040; color: #f0c040; background: #f0c04018; }
+  .fc-top-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+  /* FULLSCREEN FLASHCARD OVERLAY */
+  .fc-fullscreen-overlay {
+    position: fixed; inset: 0; background: var(--bg); z-index: 800;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px 32px;
+    gap: 28px;
+  }
+  .fc-fullscreen-overlay.open { display: flex; }
+  .fc-fullscreen-top {
+    position: absolute; top: 20px; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px;
+  }
+  .fc-fullscreen-counter { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+  .fc-fullscreen-bm { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; font-size: 1.05rem; cursor: pointer; transition: all 0.15s; color: var(--muted); line-height: 1; }
+  .fc-fullscreen-bm:hover { border-color: #f0c040; color: #f0c040; }
+  .fc-fullscreen-bm.active { border-color: #f0c040; color: #f0c040; background: #f0c04018; }
+  .fc-fullscreen-exit { background: none; border: 1px solid var(--border); border-radius: 999px; padding: 7px 18px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .fc-fullscreen-exit:hover { border-color: var(--text); color: var(--text); }
+  .fc-fullscreen-card-wrap { perspective: 1200px; width: min(560px, 90vw); height: 340px; cursor: pointer; }
+  .fc-fullscreen-controls { display: flex; align-items: center; gap: 20px; }
+  .fc-fullscreen-progress { width: min(560px, 90vw); height: 6px; background: rgba(255,255,255,0.1); border-radius: 999px; overflow: hidden; }
+  .fc-fullscreen-progress-bar { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s ease; }
 
   /* FONT NOT FOUND MODAL */
   .font-error-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; display: none; align-items: center; justify-content: center; }
@@ -603,10 +633,14 @@
   <div class="left-panel">
 
     <!-- FLASHCARD -->
-    <div id="flash-view" style="display:flex;flex-direction:column;gap:16px;">
-      <div>
-        <div class="fc-progress-label" id="fc-progress-label">0%</div>
-        <div class="fc-progress-wrap"><div class="fc-progress-bar" id="fc-progress-bar"></div></div>
+    <div id="flash-view" style="display:flex;flex-direction:column;gap:14px;">
+      <div class="fc-top-row">
+        <div style="flex:1;">
+          <div class="fc-progress-label" id="fc-progress-label">0%</div>
+          <div class="fc-progress-wrap"><div class="fc-progress-bar" id="fc-progress-bar"></div></div>
+        </div>
+        <button class="fc-bm-btn" id="fc-bm-btn" onclick="toggleCurrentCardBookmark()" title="Bookmark this word">☆</button>
+        <button class="btn" onclick="openFullscreenFlash()" title="Focused mode" style="padding:6px 12px;font-size:0.7rem;white-space:nowrap;">⛶ Focus</button>
       </div>
       <div class="card-wrap" onclick="flipCard()">
         <div class="card" id="card">
@@ -1612,6 +1646,7 @@ function showCard() {
     pbar.style.width = pct + '%';
     plbl.textContent = pct + '%';
   }
+  syncFcBmBtn();
 }
 
 function flipCard() { document.getElementById('card').classList.toggle('flipped'); }
@@ -2112,13 +2147,42 @@ async function searchFonts() {
   ];
   const q = query.toLowerCase();
   const matches = popularFonts.filter(f => f.toLowerCase().includes(q));
+
+  // Only add a custom guess if nothing in the known list matches at all
   const titleCased = query.trim().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   const alreadyIn = matches.some(f => f.toLowerCase() === q);
-  if (!alreadyIn) matches.unshift(titleCased);
+  if (!alreadyIn && matches.length === 0) {
+    // Unknown font — try to validate it via Google Fonts before showing
+    results.innerHTML = '<div class="font-search-status">Checking font...</div>';
+    const linkId = 'gf-' + titleCased.replace(/\s+/g, '-');
+    let tempLink = document.getElementById(linkId);
+    if (!tempLink) {
+      tempLink = document.createElement('link');
+      tempLink.id = linkId; tempLink.rel = 'stylesheet';
+      tempLink.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(titleCased) + ':wght@400;700&display=swap';
+      document.head.appendChild(tempLink);
+    }
+    try {
+      await Promise.race([
+        document.fonts.load(`16px "${titleCased}"`),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 2500))
+      ]);
+      const isLoaded = document.fonts.check(`16px "${titleCased}"`);
+      if (!isLoaded) throw new Error('not loaded');
+      matches.push(titleCased);
+    } catch {
+      tempLink.remove();
+      results.innerHTML = '<div class="font-search-status" style="color:#ff5555;">No font found for "' + query + '".<br><span style="font-size:0.6rem;opacity:0.7;">Try a name from fonts.google.com</span></div>';
+      return;
+    }
+  } else if (!alreadyIn && matches.length > 0) {
+    // There are similar known fonts — don't add the unknown one
+  }
+
   results.innerHTML = '';
   const current = _fontTarget === 'display' ? _customDisplayFont : _customMonoFont;
+  // Load stylesheets for known fonts
   matches.slice(0, 12).forEach((fontName, i) => {
-    const isExact = i === 0 && !alreadyIn;
     const linkId = 'gf-' + fontName.replace(/\s+/g, '-');
     if (!document.getElementById(linkId)) {
       const link = document.createElement('link');
@@ -2129,9 +2193,8 @@ async function searchFonts() {
     const item = document.createElement('div');
     item.className = 'font-result-item' + (fontName === current ? ' active' : '');
     item.dataset.font = fontName;
-    const sublabel = isExact ? 'Try this font →' : 'Click to apply';
     item.innerHTML = `<span class="font-result-name" style="font-family:'${fontName}',serif;">${fontName}</span>`
-      + `<span class="font-result-apply" id="apply-lbl-${i}">${sublabel}</span>`;
+      + `<span class="font-result-apply" id="apply-lbl-${i}">Click to apply</span>`;
     item.onclick = () => applyCustomFontWithCheck(fontName, item);
     results.appendChild(item);
   });
@@ -2235,6 +2298,101 @@ function updateBookmarkCount() {
   const el = document.getElementById('bm-count');
   if (el) el.textContent = ct;
 }
+
+// Toggle bookmark for the currently showing flashcard
+function toggleCurrentCardBookmark(isFullscreen) {
+  if (!words.length || !fcOrder.length) return;
+  const wi = fcOrder[fcIdx % fcOrder.length];
+  const w = words[wi]; if (!w) return;
+  toggleBookmark(w.word);
+  // Update the inline bookmark button
+  const bm = getBookmarks();
+  const active = !!bm[w.word];
+  const inlineBtn = document.getElementById('fc-bm-btn');
+  if (inlineBtn) {
+    inlineBtn.textContent = active ? '★' : '☆';
+    inlineBtn.classList.toggle('active', active);
+  }
+  const fsBtn = document.getElementById('fco-bm-btn');
+  if (fsBtn) {
+    fsBtn.textContent = active ? '★' : '☆';
+    fsBtn.classList.toggle('active', active);
+  }
+}
+
+// Update the fc bookmark button to reflect current card's state
+function syncFcBmBtn() {
+  if (!words.length || !fcOrder.length) return;
+  const wi = fcOrder[fcIdx % fcOrder.length];
+  const w = words[wi]; if (!w) return;
+  const bm = getBookmarks();
+  const active = !!bm[w.word];
+  const inlineBtn = document.getElementById('fc-bm-btn');
+  if (inlineBtn) { inlineBtn.textContent = active ? '★' : '☆'; inlineBtn.classList.toggle('active', active); }
+  const fsBtn = document.getElementById('fco-bm-btn');
+  if (fsBtn) { fsBtn.textContent = active ? '★' : '☆'; fsBtn.classList.toggle('active', active); }
+}
+
+// ── FULLSCREEN FLASHCARD ──
+let _fcoOpen = false;
+
+function openFullscreenFlash() {
+  _fcoOpen = true;
+  document.getElementById('fc-fullscreen-overlay').classList.add('open');
+  syncFullscreenCard();
+}
+
+function closeFullscreenFlash() {
+  _fcoOpen = false;
+  document.getElementById('fc-fullscreen-overlay').classList.remove('open');
+}
+
+function syncFullscreenCard() {
+  if (!_fcoOpen) return;
+  document.getElementById('fco-card').classList.remove('flipped');
+  if (!words.length || !fcOrder.length) {
+    document.getElementById('fco-word').textContent = 'No words yet';
+    document.getElementById('fco-def').textContent = '';
+    document.getElementById('fco-counter').textContent = '0 / 0';
+    document.getElementById('fco-progress-bar').style.width = '0%';
+    return;
+  }
+  const wi = fcOrder[fcIdx % fcOrder.length];
+  const w = words[wi];
+  document.getElementById('fco-word').textContent = w.word;
+  document.getElementById('fco-def').textContent = w.definition;
+  document.getElementById('fco-counter').textContent = `${fcIdx + 1} / ${fcOrder.length}`;
+  const pct = Math.round(((fcIdx + 1) / fcOrder.length) * 100);
+  document.getElementById('fco-progress-bar').style.width = pct + '%';
+  // Sync bookmark state
+  const bm = getBookmarks();
+  const active = !!bm[w.word];
+  const fsBtn = document.getElementById('fco-bm-btn');
+  if (fsBtn) { fsBtn.textContent = active ? '★' : '☆'; fsBtn.classList.toggle('active', active); }
+}
+
+function flipFullscreenCard() {
+  document.getElementById('fco-card').classList.toggle('flipped');
+}
+
+function fcoNav(dir) {
+  if (!words.length) return;
+  fcIdx = (fcIdx + dir + fcOrder.length) % fcOrder.length;
+  saveFcIdx();
+  showCard();           // keeps main card in sync
+  syncFullscreenCard();
+}
+
+// Keyboard: also handle fullscreen
+const _origKeydown = document.onkeydown;
+document.addEventListener('keydown', function(e) {
+  if (!_fcoOpen) return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); fcoNav(1); }
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); fcoNav(-1); }
+  else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flipFullscreenCard(); }
+  else if (e.key === 'Escape') { closeFullscreenFlash(); }
+});
 
 let _bmFilterActive = false;
 function toggleBookmarkFilter() {
@@ -2435,7 +2593,7 @@ function renderWordList() {
         <span class="word-item-name">${w.word}</span>
         <span class="word-item-def">${w.definition}</span>
       </div>
-      <button class="bm-icon${isBookmarked ? ' active' : ''}" onclick="event.stopPropagation();toggleBookmark('${w.word.replace(/'/g, "\\'")}');" title="Bookmark">⊙</button>
+      <button class="bm-icon${isBookmarked ? ' active' : ''}" onclick="event.stopPropagation();toggleBookmark('${w.word.replace(/'/g, "\\'")}');" title="${isBookmarked ? 'Remove bookmark' : 'Bookmark'}">${isBookmarked ? '★' : '☆'}</button>
       ${delBtn}
     `;
     list.appendChild(item);
@@ -2642,6 +2800,29 @@ document.addEventListener('keydown', e => {
     padding:4px 12px; font-size:0.8rem; cursor:pointer; font-weight:600;
   ">Undo</button>
 </div>
+<div class="fc-fullscreen-overlay" id="fc-fullscreen-overlay">
+  <div class="fc-fullscreen-top">
+    <span class="fc-fullscreen-counter" id="fco-counter">0 / 0</span>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="fc-fullscreen-bm" id="fco-bm-btn" onclick="toggleCurrentCardBookmark(true)" title="Bookmark">☆</button>
+      <button class="fc-fullscreen-exit" onclick="closeFullscreenFlash()">✕ Exit Focus</button>
+    </div>
+  </div>
+  <div class="fc-fullscreen-progress">
+    <div class="fc-fullscreen-progress-bar" id="fco-progress-bar"></div>
+  </div>
+  <div class="fc-fullscreen-card-wrap" onclick="flipFullscreenCard()">
+    <div class="card" id="fco-card">
+      <div class="card-face card-front"><div class="card-word" id="fco-word">—</div><div class="card-hint">click to reveal</div></div>
+      <div class="card-face card-back"><div class="card-def" id="fco-def">—</div></div>
+    </div>
+  </div>
+  <div class="fc-fullscreen-controls">
+    <button class="btn" onclick="fcoNav(-1)">← Prev</button>
+    <button class="btn" onclick="fcoNav(1)">Next →</button>
+  </div>
+</div>
+
 <div class="font-error-overlay" id="font-error-overlay" onclick="if(event.target===this)closeFontErrorModal()">
   <div class="font-error-box">
     <div class="font-error-icon">🔤</div>
