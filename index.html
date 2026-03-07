@@ -406,10 +406,18 @@
     position: absolute; top: 20px; left: 0; right: 0;
     display: flex; align-items: center; justify-content: space-between; padding: 0 28px;
   }
-  .quiz-fullscreen-options { display: flex; flex-direction: column; gap: 8px; width: 100%; padding: 8px; box-sizing: border-box; }
+  .quiz-fullscreen-word { font-family: var(--font-display); font-size: clamp(1.6rem, 4vw, 2.6rem); color: var(--accent); text-align: center; }
+  .quiz-fullscreen-options { display: flex; flex-direction: column; gap: 8px; width: min(560px, 90vw); }
   .quiz-fullscreen-options .option { font-size: 0.8rem; padding: 10px 14px; }
-  .quiz-fullscreen-feedback { font-family: var(--font-mono); font-size: 0.85rem; text-align: center; min-height: 24px; }
+  .quiz-fullscreen-feedback { font-family: var(--font-mono); font-size: 0.85rem; }
   .quiz-fullscreen-score { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); }
+  /* Star bookmark — plain text star, no border box */
+  .qfs-bm-star { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--muted); padding: 0 4px; line-height: 1; transition: color 0.15s, transform 0.1s; }
+  .qfs-bm-star:hover { color: #f0c040; transform: scale(1.15); }
+  .qfs-bm-star.active { color: #f0c040; }
+  .srs-bm-star { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--muted); padding: 0 4px; line-height: 1; transition: color 0.15s, transform 0.1s; }
+  .srs-bm-star:hover { color: #f0c040; transform: scale(1.15); }
+  .srs-bm-star.active { color: #f0c040; }
 
   /* SRS fullscreen */
   .srs-fullscreen-overlay {
@@ -742,7 +750,7 @@
         <div class="quiz-header">
           <span class="quiz-progress" id="q-progress"></span>
           <div style="display:flex;gap:8px;align-items:center;">
-            <button class="fc-bm-btn" id="q-bm-btn" onclick="quizToggleBookmark()" title="Bookmark this word">☆</button>
+            <button class="qfs-bm-star" id="q-bm-btn" onclick="quizToggleBookmark()" title="Bookmark this word">☆</button>
             <button class="btn btn-danger" onclick="endQuiz()" style="padding:6px 14px;font-size:0.72rem;">Stop</button>
           </div>
         </div>
@@ -760,13 +768,7 @@
           <div class="results-sub" id="r-sub">—</div>
         </div>
         <div class="results-lists" id="r-lists"></div>
-        <div id="wrong-prompt" class="wrong-prompt" style="display:none;">
-          You got some wrong. Want to study those words in Spaced Review?
-          <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
-            <button class="btn" onclick="studyWrong()">Yes, study them →</button>
-            <button class="btn" onclick="showQuizSetup()">No thanks</button>
-          </div>
-        </div>
+
         <div class="results-actions"><button class="btn" onclick="showQuizSetup()">↺ New Quiz</button></div>
       </div>
     </div>
@@ -2967,10 +2969,7 @@ function answerQ(btn, isCorrect, ci) {
     quizWrongWords.push(words[ci].word);
   }
   document.querySelectorAll('.option').forEach(o => o.disabled = true);
-  if (_qfsOpen) {
-    document.getElementById('qfs-card').classList.add('flipped');
-    syncQFS();
-  }
+  if (_qfsOpen) syncQFS();
   document.getElementById('q-live-score').textContent = `${quizCorrect} / ${quizQ} correct`;
   if (quizMode === 'limited' && quizQ >= quizLimit) {
     document.getElementById('q-next').textContent = 'See Results →';
@@ -3008,7 +3007,7 @@ function showResults() {
     + (uniqueWrong.length ? uniqueWrong.map(w=>`<div class="result-word">${w}</div>`).join('') : '<div class="result-word" style="color:var(--muted)">none</div>');
   lists.appendChild(rightEl);
   lists.appendChild(wrongEl);
-  document.getElementById('wrong-prompt').style.display = quizWrongWords.length > 0 ? 'block' : 'none';
+
 }
 
 function showQuizSetup() {
@@ -3789,16 +3788,13 @@ function closeFullscreenQuiz() {
 
 function qfsNewCard() {
   if (!_qfsOpen) return;
-  // Reset card to unflipped (word side)
-  document.getElementById('qfs-card').classList.remove('flipped');
   document.getElementById('qfs-feedback').textContent = '';
   document.getElementById('qfs-feedback').style.color = '';
   document.getElementById('qfs-next').style.display = 'none';
-  // Sync word + meta from inline quiz
   document.getElementById('qfs-word').textContent = document.getElementById('q-word').textContent;
   document.getElementById('qfs-progress').textContent = document.getElementById('q-progress').textContent;
   document.getElementById('qfs-score').textContent = document.getElementById('q-live-score').textContent;
-  // Clone options into card back (hidden until flip)
+  // Clone options — always visible, no flip needed
   const srcOpts = document.getElementById('q-options');
   const dstOpts = document.getElementById('qfs-options');
   dstOpts.innerHTML = srcOpts.innerHTML;
@@ -3806,11 +3802,9 @@ function qfsNewCard() {
     const srcBtn = srcOpts.querySelectorAll('.option')[i];
     btn.onclick = () => { if (srcBtn && !srcBtn.disabled) srcBtn.click(); };
   });
-  // Progress bar
   const prog = document.getElementById('q-progress').textContent;
   const m = prog.match(/(\d+)\s*\/\s*(\d+)/);
   if (m) document.getElementById('qfs-progress-bar').style.width = Math.round((parseInt(m[1])/parseInt(m[2]))*100) + '%';
-  // Sync bookmark
   syncQFSBookmark();
 }
 
@@ -3832,11 +3826,6 @@ function syncQFS() {
       dstOpts[i].disabled = src.disabled;
     }
   });
-}
-
-function qfsFlipCard() {
-  if (quizAnswered) return; // already answered, don't re-flip
-  document.getElementById('qfs-card').classList.toggle('flipped');
 }
 
 function syncQFSBookmark() {
@@ -3900,7 +3889,6 @@ function srsfsSync() {
   if (!_srsfsOpen) return;
   const wi = _srsQueue[_srsSessionIdx - 1] ?? _srsQueue[0];
   if (wi === undefined || !words[wi]) return;
-  // Card is already shown via showSRSCard; mirror values
   document.getElementById('srsfs-word').textContent = document.getElementById('foc-word').textContent;
   document.getElementById('srsfs-def').textContent = document.getElementById('foc-def').textContent;
   document.getElementById('srsfs-hint').textContent = document.getElementById('srs-interval-hint').textContent;
@@ -3908,6 +3896,21 @@ function srsfsSync() {
   document.getElementById('srsfs-card').classList.remove('flipped');
   const pct = Math.round((_srsSessionIdx / _srsQueue.length) * 100);
   document.getElementById('srsfs-progress-bar').style.width = pct + '%';
+  // Sync star bookmark
+  const word = document.getElementById('srsfs-word').textContent;
+  const bm = getBookmarks();
+  const btn = document.getElementById('srsfs-bm-btn');
+  if (btn) { btn.textContent = bm[word] ? '★' : '☆'; btn.classList.toggle('active', !!bm[word]); }
+}
+
+function srsfsToggleBookmark() {
+  const word = document.getElementById('srsfs-word').textContent;
+  if (!word || word === '—') return;
+  const bm = getBookmarks();
+  if (bm[word]) delete bm[word]; else bm[word] = true;
+  saveBookmarks(bm);
+  const btn = document.getElementById('srsfs-bm-btn');
+  if (btn) { btn.textContent = bm[word] ? '★' : '☆'; btn.classList.toggle('active', !!bm[word]); }
 }
 
 function srsfsFlip() {
@@ -4483,29 +4486,28 @@ document.addEventListener('keydown', e => {
     <span class="fc-fullscreen-counter" id="qfs-progress"></span>
     <div style="display:flex;gap:10px;align-items:center;">
       <span class="quiz-fullscreen-score" id="qfs-score"></span>
-      <button class="fc-fullscreen-bm" id="qfs-bm-btn" onclick="qfsToggleBookmark()" title="Bookmark">☆</button>
+      <button class="qfs-bm-star" id="qfs-bm-btn" onclick="qfsToggleBookmark()" title="Bookmark">☆</button>
       <button class="fc-fullscreen-exit" onclick="closeFullscreenQuiz()">✕ Exit Focus</button>
     </div>
   </div>
   <div class="fc-fullscreen-progress" style="position:absolute;top:52px;left:28px;right:28px;width:auto;">
     <div class="fc-fullscreen-progress-bar" id="qfs-progress-bar" style="width:0%"></div>
   </div>
-  <div class="fc-fullscreen-card-wrap" onclick="qfsFlipCard()" id="qfs-card-wrap">
-    <div class="card" id="qfs-card">
-      <div class="card-face card-front"><div class="card-word" id="qfs-word">—</div><div class="card-hint">click to see options</div></div>
-      <div class="card-face card-back">
-        <div class="quiz-fullscreen-options" id="qfs-options"></div>
-      </div>
-    </div>
+  <div class="quiz-fullscreen-word" id="qfs-word">—</div>
+  <div class="quiz-fullscreen-options" id="qfs-options"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;width:min(560px,90vw);min-height:32px;">
+    <div class="quiz-fullscreen-feedback" id="qfs-feedback"></div>
+    <button class="btn" id="qfs-next" style="display:none;" onclick="qfsNext()">Next →</button>
   </div>
-  <div class="quiz-fullscreen-feedback" id="qfs-feedback"></div>
-  <button class="btn" id="qfs-next" style="display:none;" onclick="qfsNext()">Next →</button>
 </div>
 
 <div class="srs-fullscreen-overlay" id="srs-fullscreen-overlay">
   <div class="srs-fullscreen-top">
     <span class="fc-fullscreen-counter" id="srsfs-counter"></span>
-    <button class="fc-fullscreen-exit" onclick="closeFullscreenSRS()">✕ Exit Focus</button>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="srs-bm-star" id="srsfs-bm-btn" onclick="srsfsToggleBookmark()" title="Bookmark">☆</button>
+      <button class="fc-fullscreen-exit" onclick="closeFullscreenSRS()">✕ Exit Focus</button>
+    </div>
   </div>
   <div class="fc-fullscreen-progress" style="position:absolute;top:52px;left:28px;right:28px;width:auto;">
     <div class="fc-fullscreen-progress-bar" id="srsfs-progress-bar" style="width:0%"></div>
