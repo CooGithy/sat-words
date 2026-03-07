@@ -212,6 +212,13 @@
   .source-btn:hover { border-color: var(--accent); color: var(--accent); }
   .source-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
   .word-item { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; gap: 10px; }
+  .word-item.editing { border-color: var(--accent); }
+  .word-edit-inputs { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0; }
+  .word-edit-inputs input { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 0.78rem; color: var(--text); font-family: var(--font-mono); width: 100%; box-sizing: border-box; }
+  .word-edit-inputs input:focus { outline: none; border-color: var(--accent); }
+  .word-edit-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .word-edit-save { background: var(--accent); color: #000; border: none; border-radius: 6px; padding: 3px 9px; font-size: 0.72rem; font-family: var(--font-mono); cursor: pointer; }
+  .word-edit-cancel { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 3px 9px; font-size: 0.72rem; font-family: var(--font-mono); cursor: pointer; }
   .word-item-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
   .word-item-name { font-size: 0.82rem; color: var(--accent); font-family: var(--font-display); }
   .word-item-def { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -673,7 +680,7 @@
           <button class="source-btn active" id="qsrc-all" onclick="selectQuizSource('all')">All words</button>
           <button class="source-btn" id="qsrc-bookmarked" onclick="selectQuizSource('bookmarked')">⊙ Bookmarked</button>
         </div>
-        <p>Choose infinite mode or set a word limit.</p>
+        <p>Choose infinite mode or set a word limit.<br><span id="quiz-word-count-label" style="font-size:0.72rem;color:var(--muted);"></span></p>
         <div class="quiz-mode-row">
           <button class="mode-btn active" id="mode-infinite" onclick="selectQuizMode('infinite')">∞ Infinite</button>
           <button class="mode-btn" id="mode-limited" onclick="selectQuizMode('limited')"># Limited</button>
@@ -723,6 +730,7 @@
           <button class="source-btn" id="fsrc-bookmarked" onclick="selectFocusSource('bookmarked')">⊙ Bookmarked</button>
         </div>
         <p id="focus-setup-msg">Pick a number of words to study.<br>A random set will be pulled from your list.</p>
+        <p style="font-size:0.72rem;color:var(--muted);margin-top:-12px;"><span id="focus-word-count-label"></span></p>
         <div class="focus-input-row" id="focus-input-row">
           <input id="focus-count" type="number" min="2" placeholder="10" />
           <button class="btn" onclick="startFocus()">Start →</button>
@@ -2628,15 +2636,21 @@ function confirmDeleteGroup() {
   const id = _deleteTargetId; if (!id) return;
   closeDeleteModal();
   groups = groups.filter(g => g.id !== id);
+  if (!groups.length) {
+    // No groups left — go back to groups page so user can create one
+    activeGroupId = null;
+    words = []; fcOrder = []; fcIdx = 0;
+    saveGroups();
+    showGroupsPage();
+    return;
+  }
   if (activeGroupId === id) {
-    activeGroupId = groups.length ? groups[0].id : null;
-    words = activeGroupId ? getActiveGroup().words : [];
-    fcOrder = []; fcIdx = 0;
-    if (activeGroupId) {
-      showCard(); renderWordList();
-      const lbl = document.getElementById('active-group-label');
-      if (lbl) lbl.textContent = getActiveGroup().name;
-    }
+    activeGroupId = groups[0].id;
+    words = getActiveGroup().words;
+    fcOrder = words.map((_,i)=>i); fcIdx = 0;
+    showCard(); renderWordList();
+    const lbl = document.getElementById('active-group-label');
+    if (lbl) lbl.textContent = getActiveGroup().name;
   }
   saveGroups();
   const deadCard = document.querySelector(`.group-card[data-group-id="${id}"]`);
@@ -2764,10 +2778,31 @@ function selectQuizMode(m) {
   document.getElementById('limit-input-row').style.display = m==='limited' ? 'flex' : 'none';
 }
 
+function updateQuizWordCountLabel() {
+  const el = document.getElementById('quiz-word-count-label');
+  if (!el) return;
+  const bm = getBookmarks();
+  const count = _quizSource === 'bookmarked'
+    ? words.filter(w => bm[w.word]).length
+    : words.length;
+  el.textContent = count > 0 ? `${count} word${count !== 1 ? 's' : ''} available` : '';
+}
+
+function updateFocusWordCountLabel() {
+  const el = document.getElementById('focus-word-count-label');
+  if (!el) return;
+  const bm = getBookmarks();
+  const count = _focusSource === 'bookmarked'
+    ? words.filter(w => bm[w.word]).length
+    : words.length;
+  el.textContent = count > 0 ? `${count} word${count !== 1 ? 's' : ''} available` : '';
+}
+
 function selectQuizSource(src) {
   _quizSource = src;
   document.getElementById('qsrc-all').classList.toggle('active', src === 'all');
   document.getElementById('qsrc-bookmarked').classList.toggle('active', src === 'bookmarked');
+  updateQuizWordCountLabel();
 }
 
 function selectFocusSource(src) {
@@ -2778,6 +2813,7 @@ function selectFocusSource(src) {
   if (msg) msg.innerHTML = src === 'bookmarked'
     ? 'Pick a number of bookmarked words to study.<br>Bookmarked words will be pulled randomly.'
     : 'Pick a number of words to study.<br>A random set will be pulled from your list.';
+  updateFocusWordCountLabel();
 }
 
 function startQuiz() {
@@ -2902,6 +2938,7 @@ function showQuizSetup() {
   document.getElementById('quiz-results').style.display = 'none';
   quizPool = []; quizAsked = [];
   ctxQuiz = 'all'; refreshWordListForMode();
+  updateQuizWordCountLabel();
 }
 
 // ── FOCUSED STUDY ──
@@ -3067,6 +3104,7 @@ function showFocusResults() {
 
 function resetFocusSetup() {
   focusFromQuiz = false;
+  updateFocusWordCountLabel();
   document.getElementById('focus-setup').style.display = 'block';
   document.getElementById('focus-card-wrap').style.display = 'none';
   document.getElementById('focus-results').style.display = 'none';
@@ -3662,7 +3700,7 @@ function renderWordList() {
       ? `<button class="word-del-btn" onclick="deleteWord(${wordIdx})" title="Delete permanently">✕</button>`
       : `<button class="word-del-btn" onclick="removeFromSet(${posInContext})" title="Remove from this set" style="color:#f0a060;">−</button>`;
     item.innerHTML = `
-      <div class="word-item-text">
+      <div class="word-item-text" ${isAll ? `onclick="event.stopPropagation();startEditWord(${wordIdx})" style="cursor:pointer;" title="Click to edit"` : ''}>
         <span class="word-item-name">${w.word}</span>
         <span class="word-item-def">${w.definition}</span>
       </div>
@@ -3671,6 +3709,68 @@ function renderWordList() {
     `;
     list.appendChild(item);
   });
+}
+
+function startEditWord(wordIdx) {
+  const w = words[wordIdx];
+  if (!w) return;
+  const list = document.getElementById('word-list');
+  const items = list.querySelectorAll('.word-item');
+  // Find the item for this wordIdx
+  let targetItem = null;
+  items.forEach(item => {
+    const nameEl = item.querySelector('.word-item-name');
+    if (nameEl && nameEl.textContent === w.word) targetItem = item;
+  });
+  if (!targetItem) return;
+  targetItem.classList.add('editing');
+  const wordInput = document.createElement('input');
+  wordInput.value = w.word;
+  wordInput.placeholder = 'Word';
+  const defInput = document.createElement('input');
+  defInput.value = w.definition;
+  defInput.placeholder = 'Definition';
+  const wrap = document.createElement('div');
+  wrap.className = 'word-edit-inputs';
+  wrap.appendChild(wordInput);
+  wrap.appendChild(defInput);
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'word-edit-save';
+  saveBtn.textContent = 'Save';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'word-edit-cancel';
+  cancelBtn.textContent = '✕';
+  const actions = document.createElement('div');
+  actions.className = 'word-edit-actions';
+  actions.appendChild(saveBtn);
+  actions.appendChild(cancelBtn);
+  // Replace text div with inputs
+  const textDiv = targetItem.querySelector('.word-item-text');
+  targetItem.replaceChild(wrap, textDiv);
+  // Hide bm and del buttons while editing
+  targetItem.querySelectorAll('.bm-icon, .word-del-btn').forEach(b => b.style.display = 'none');
+  targetItem.appendChild(actions);
+  wordInput.focus();
+  const doSave = () => {
+    const newWord = wordInput.value.trim();
+    const newDef = defInput.value.trim();
+    if (!newWord || !newDef) { wordInput.focus(); return; }
+    // Update bookmarks if word name changed
+    if (newWord !== w.word) {
+      const bm = getBookmarks();
+      if (bm[w.word]) { bm[newWord] = bm[w.word]; delete bm[w.word]; saveBookmarks(bm); }
+    }
+    words[wordIdx].word = newWord;
+    words[wordIdx].definition = newDef;
+    saveWords();
+    renderWordList();
+    if (activeMode === 'flash') showCard();
+  };
+  const doCancel = () => renderWordList();
+  saveBtn.onclick = e => { e.stopPropagation(); doSave(); };
+  cancelBtn.onclick = e => { e.stopPropagation(); doCancel(); };
+  defInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSave(); if (e.key === 'Escape') doCancel(); });
+  wordInput.addEventListener('keydown', e => { if (e.key === 'Escape') doCancel(); });
 }
 
 function removeFromSet(posInContext) {
