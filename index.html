@@ -799,7 +799,7 @@
         <button class="bm-filter-btn" id="bm-filter-btn" onclick="toggleBookmarkFilter()">⊙ Bookmarked (<span id="bm-count">0</span>)</button>
       </div>
       <div class="word-search-wrap">
-        <input class="word-search-input" id="word-search-input" type="text" placeholder="Search words…" oninput="onWordSearch(this.value)" autocomplete="off" />
+        <input class="word-search-input" id="word-search-input" type="text" placeholder="Search by word…" oninput="onWordSearch(this.value)" autocomplete="off" />
         <button class="word-search-clear" id="word-search-clear" onclick="clearWordSearch()" title="Clear">✕</button>
       </div>
       <div class="word-list" id="word-list"></div>
@@ -2629,10 +2629,7 @@ function renderWordList() {
   if (_wordSearchQuery) {
     indices = indices.filter(i => {
       const w = words[i];
-      return w && (
-        w.word.toLowerCase().includes(_wordSearchQuery) ||
-        w.definition.toLowerCase().includes(_wordSearchQuery)
-      );
+      return w && w.word.toLowerCase().includes(_wordSearchQuery);
     });
   }
   if (count) count.textContent = indices.length;
