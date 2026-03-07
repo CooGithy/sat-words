@@ -331,88 +331,191 @@
   /* INLINE RENAME */
   .group-name-input { background: none; border: none; border-bottom: 1px solid var(--accent); color: var(--accent); font-family: var(--font-display); font-size: 1.1rem; outline: none; width: 100%; }
 
+  /* FONT NOT FOUND MODAL */
+  .font-error-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; display: none; align-items: center; justify-content: center; }
+  .font-error-overlay.open { display: flex; }
+  .font-error-box { background: var(--surface); border: 1px solid #ff5555; border-radius: 18px; padding: 28px 28px 22px; max-width: 320px; width: 90%; text-align: center; box-shadow: 0 8px 40px rgba(0,0,0,0.6); }
+  .font-error-icon { font-size: 2rem; margin-bottom: 10px; line-height: 1; }
+  .font-error-title { font-family: var(--font-display); font-size: 1.15rem; color: #ff5555; margin-bottom: 8px; }
+  .font-error-msg { font-size: 0.78rem; color: var(--muted); line-height: 1.6; margin-bottom: 20px; }
+  .font-error-name { color: var(--text); font-weight: 600; }
+  .font-error-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 9px 28px; border-radius: 999px; font-family: var(--font-mono); font-size: 0.78rem; cursor: pointer; transition: all 0.15s; }
+  .font-error-btn:hover { border-color: var(--accent); color: var(--accent); }
+
   /* ── MOBILE (≤ 768px) ── */
   @media (max-width: 768px) {
-    .app-layout { grid-template-columns: 1fr; min-height: unset; }
-    .left-panel { padding: 16px 16px 0; border-right: none; border-bottom: 1px solid var(--border); gap: 12px; }
-    .right-panel { padding: 16px; gap: 12px; overflow-y: unset; }
 
-    .top-header { padding: 12px 16px; }
-    .top-header h1 { font-size: 1.2rem; }
-    .top-header .groups-back { left: 12px !important; font-size: 0.68rem; padding: 5px 10px; }
+    /* --- Layout --- */
+    .app-layout {
+      display: flex;
+      flex-direction: column;
+      min-height: unset;
+    }
+    .left-panel {
+      padding: 14px 14px 20px;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      gap: 14px;
+    }
+    .right-panel {
+      padding: 14px;
+      gap: 12px;
+      overflow-y: unset;
+    }
 
-    .sat-wordmark { top: 10px; left: 12px; font-size: 0.85rem; }
-    .settings-btn { top: 12px; right: 12px; width: 40px; height: 40px; }
-    .settings-panel { top: 60px; right: 8px; left: 8px; width: auto; max-height: 75vh; }
+    /* --- Header: hide SAT wordmark, give the Groups button room --- */
+    .sat-wordmark { display: none !important; }
+    .top-header {
+      padding: 10px 12px 10px 12px;
+      min-height: 52px;
+    }
+    .top-header h1 { font-size: 1.1rem; }
+    /* Groups ← button sits left of center title */
+    .top-header > button.groups-back {
+      position: absolute !important;
+      left: 12px !important;
+      font-size: 0.65rem;
+      padding: 5px 10px;
+    }
+    /* Settings ⚙ sits top-right */
+    .settings-btn {
+      top: 8px;
+      right: 10px;
+      width: 34px;
+      height: 34px;
+      font-size: 0.85rem;
+    }
+    .settings-panel {
+      top: 50px;
+      right: 6px;
+      left: 6px;
+      width: auto;
+      max-height: 78vh;
+    }
 
-    .card-wrap { height: 200px; }
-    .card-word { font-size: 1.8rem; }
-    .card-face { padding: 20px 16px; }
-    .card-def { font-size: 0.88rem; }
+    /* --- Flashcard --- */
     .fc-progress-label { font-size: 0.55rem; }
+    .card-wrap { height: 190px; }
+    .card-face { padding: 18px 14px; }
+    .card-word { font-size: 1.7rem; }
+    .card-def  { font-size: 0.85rem; line-height: 1.55; }
+    .card-hint { font-size: 0.65rem; }
+    .controls  { gap: 8px; }
 
-    .controls { gap: 8px; justify-content: center; }
-    .btn { padding: 10px 16px; font-size: 0.75rem; }
-    .shuffle-btn { font-size: 0.75rem; padding: 10px 16px; }
+    /* --- Buttons --- */
+    .btn        { padding: 9px 14px; font-size: 0.72rem; }
+    .shuffle-btn { font-size: 0.72rem; padding: 9px 14px; }
 
+    /* --- Tabs: horizontal scroll, no wrap --- */
     .tabs {
       flex-wrap: nowrap;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
-      padding-bottom: 4px;
       justify-content: flex-start;
-      margin-bottom: 12px;
+      gap: 5px;
+      margin-bottom: 10px;
+      padding-bottom: 2px;
     }
     .tabs::-webkit-scrollbar { display: none; }
-    .tab { white-space: nowrap; padding: 7px 12px; font-size: 0.68rem; flex-shrink: 0; }
+    .tab { white-space: nowrap; padding: 6px 12px; font-size: 0.65rem; flex-shrink: 0; }
 
-    .word-list { max-height: 260px; }
-    .word-list-header { flex-wrap: wrap; gap: 6px; }
+    /* --- Word list --- */
+    .word-list { max-height: 220px; }
+    .word-list-header { flex-wrap: wrap; gap: 5px; }
+    .bm-filter-btn { font-size: 0.6rem; padding: 3px 8px; }
 
-    .quiz-setup { padding: 20px 14px; }
-    .quiz-word { font-size: 1.6rem; margin-bottom: 16px; }
-    .option { padding: 11px 12px; font-size: 0.75rem; }
+    /* --- Quiz --- */
+    .quiz-setup { padding: 18px 12px; border-radius: 14px; }
+    .quiz-setup-title { font-size: 1.1rem; margin-bottom: 10px; }
+    .quiz-word { font-size: 1.5rem; margin-bottom: 14px; }
+    .option { padding: 10px 12px; font-size: 0.72rem; border-radius: 10px; }
     .results-lists { grid-template-columns: 1fr; }
+    .results-pct { font-size: 2.6rem; }
+    .quiz-mode-row { gap: 6px; }
+    .mode-btn { padding: 6px 14px; font-size: 0.68rem; }
 
-    .focus-setup { padding: 20px 14px; }
-    .rating-btn { padding: 9px 10px; font-size: 0.7rem; }
+    /* --- Focus --- */
+    .focus-setup { padding: 18px 12px; border-radius: 14px; }
+    .focus-label { font-size: 1.1rem; }
+    .rating-btn { padding: 9px 10px; font-size: 0.68rem; }
 
-    .home-title { font-size: 2.4rem; }
-    .home-tagline { font-size: 0.8rem; }
-    .home-features { grid-template-columns: 1fr; gap: 10px; }
-    .home-inner { gap: 24px; }
-    .cta-btn { padding: 12px 32px; }
+    /* --- Source row (bookmarks filter) --- */
+    .source-row { gap: 5px; margin-bottom: 10px; }
+    .source-btn { padding: 4px 10px; font-size: 0.63rem; }
 
-    .groups-header { margin-bottom: 20px; }
-    .groups-header h2 { font-size: 2.2rem; }
-    .groups-grid { grid-template-columns: 1fr; width: 100%; max-width: 420px; }
-    #groups-page { padding: 70px 16px 24px; justify-content: flex-start; align-items: center; }
+    /* --- Add words --- */
+    .add-section { padding-top: 14px; gap: 7px; }
+    .add-row { flex-direction: column; gap: 7px; }
+    .add-btn { width: 100%; padding: 11px; border-radius: 10px; }
+    .json-row { gap: 6px; }
+    .json-btn { font-size: 0.65rem; padding: 7px 6px; }
 
-    .add-row { flex-direction: column; }
-    .add-btn { width: 100%; padding: 12px; }
+    /* --- Analytics --- */
+    .analytics-word { min-width: 70px; font-size: 0.72rem; }
+    .analytics-stat-grid { gap: 7px; }
+    .analytics-stat-val { font-size: 1.1rem; }
+    .analytics-stat-lbl { font-size: 0.52rem; }
+    #analytics-view { max-height: unset; padding-bottom: 12px; }
 
-    .analytics-word { min-width: 80px; font-size: 0.75rem; }
-    #analytics-view { max-height: unset; }
+    /* --- Home page --- */
+    #home-page { padding: 32px 16px; }
+    .home-inner { gap: 20px; }
+    .home-title { font-size: 2.2rem; letter-spacing: -0.5px; }
+    .home-tagline { font-size: 0.78rem; }
+    .home-features { grid-template-columns: 1fr; gap: 8px; }
+    .feature-card { padding: 16px 14px; }
+    .feature-icon { font-size: 1.2rem; margin-bottom: 6px; }
+    .feature-title { font-size: 0.9rem; }
+    .feature-desc { font-size: 0.68rem; }
+    .cta-btn { padding: 12px 28px; font-size: 0.82rem; }
 
-    .modal { padding: 22px 14px; width: 92%; }
+    /* --- Groups page --- */
+    #groups-page {
+      padding: 64px 14px 24px;
+      justify-content: flex-start;
+      align-items: center;
+    }
+    .groups-header { margin-bottom: 16px; }
+    .groups-header h2 { font-size: 2rem; }
+    .groups-grid { grid-template-columns: 1fr; width: 100%; max-width: 400px; }
+    .group-card { padding: 16px 14px; border-radius: 14px; }
+    .group-card-name { font-size: 1rem; }
+    .group-new-card { padding: 16px 14px; min-height: 80px; }
 
-    #undo-toast { font-size: 0.75rem; padding: 9px 12px; width: 90vw; justify-content: space-between; }
+    /* --- Modals --- */
+    .modal { padding: 20px 14px; width: 94%; border-radius: 16px; }
+    .modal-title { font-size: 1.1rem; }
+    .modal-msg { font-size: 0.75rem; }
 
-    .source-row { gap: 5px; }
-    .source-btn { padding: 4px 10px; font-size: 0.65rem; }
+    /* --- Undo toast --- */
+    #undo-toast {
+      width: 92vw;
+      font-size: 0.72rem;
+      padding: 9px 12px;
+      justify-content: space-between;
+    }
   }
 
   /* iPhone notch / home bar safe areas */
   @supports (padding: env(safe-area-inset-bottom)) {
     body { padding-bottom: env(safe-area-inset-bottom); }
     #home-page {
-      padding-top: max(40px, env(safe-area-inset-top));
-      padding-left: max(24px, env(safe-area-inset-left));
-      padding-right: max(24px, env(safe-area-inset-right));
+      padding-top: max(32px, env(safe-area-inset-top));
+      padding-left: max(16px, env(safe-area-inset-left));
+      padding-right: max(16px, env(safe-area-inset-right));
     }
-    #groups-page { padding-top: max(60px, calc(env(safe-area-inset-top) + 20px)); }
-    .settings-btn { top: max(12px, env(safe-area-inset-top)); }
-    #undo-toast { bottom: max(28px, calc(env(safe-area-inset-bottom) + 12px)); }
+    #groups-page {
+      padding-top: max(64px, calc(env(safe-area-inset-top) + 44px));
+    }
+    .top-header {
+      padding-top: max(10px, env(safe-area-inset-top));
+    }
+    .settings-btn {
+      top: max(8px, env(safe-area-inset-top));
+    }
+    #undo-toast {
+      bottom: max(24px, calc(env(safe-area-inset-bottom) + 10px));
+    }
   }
 </style>
 </head>
@@ -2049,8 +2152,8 @@ async function applyCustomFontWithCheck(fontName, itemEl) {
   const loaded = document.fonts.check(`16px "${fontName}"`);
   if (!loaded) {
     link.remove();
-    if (lbl) { lbl.textContent = '✕ Font not found'; lbl.style.color = '#ff5555'; }
-    setTimeout(() => { if (lbl) { lbl.textContent = 'Try this font →'; lbl.style.color = ''; } }, 2000);
+    if (lbl) { lbl.textContent = 'Try this font →'; lbl.style.color = ''; }
+    showFontErrorModal(fontName);
     return;
   }
   applyCustomFont(fontName);
@@ -2085,6 +2188,16 @@ function loadAndApplyCustomFont(fontName, target, save) {
   activeFontTheme = null;
   localStorage.removeItem('sat-font-theme');
   document.querySelectorAll('.font-theme-btn').forEach(b => b.classList.remove('active'));
+}
+
+function showFontErrorModal(fontName) {
+  const el = document.getElementById('font-error-name-display');
+  if (el) el.textContent = '"' + fontName + '"';
+  document.getElementById('font-error-overlay').classList.add('open');
+}
+
+function closeFontErrorModal() {
+  document.getElementById('font-error-overlay').classList.remove('open');
 }
 
 function clearCustomFonts() {
@@ -2529,5 +2642,17 @@ document.addEventListener('keydown', e => {
     padding:4px 12px; font-size:0.8rem; cursor:pointer; font-weight:600;
   ">Undo</button>
 </div>
+<div class="font-error-overlay" id="font-error-overlay" onclick="if(event.target===this)closeFontErrorModal()">
+  <div class="font-error-box">
+    <div class="font-error-icon">🔤</div>
+    <div class="font-error-title">Font Not Found</div>
+    <div class="font-error-msg">
+      <span id="font-error-name-display" class="font-error-name"></span> couldn't be loaded.<br>
+      Check the spelling or try a different name from <a href="https://fonts.google.com" target="_blank" style="color:var(--accent);">fonts.google.com</a>.
+    </div>
+    <button class="font-error-btn" onclick="closeFontErrorModal()">Got it</button>
+  </div>
+</div>
+
 </body>
 </html>
