@@ -2477,19 +2477,14 @@ function switchGroup(id) {
     setTimeout(() => { hp.style.display = 'none'; }, 500);
   }
   hideGroupsPage();
-  // If we were mid-session in quiz or focus, go to flash so the new group starts clean.
-  // But if we were just browsing the setup screen (no active session), stay in that mode.
-  const wasMode = activeMode;
-  const quizActive = document.getElementById('quiz-active') && document.getElementById('quiz-active').style.display !== 'none';
-  const quizResults = document.getElementById('quiz-results') && document.getElementById('quiz-results').style.display !== 'none';
-  const focusActive = document.getElementById('focus-card-wrap') && document.getElementById('focus-card-wrap').style.display !== 'none';
-  const focusResults = document.getElementById('focus-results') && document.getElementById('focus-results').style.display !== 'none';
-  const inActiveSession = quizActive || quizResults || focusActive || focusResults;
-  if (inActiveSession) {
-    switchMode('flash');
-  } else {
-    switchMode(wasMode || 'flash');
-  }
+  // Reset quiz and focus UI to setup screens so they start fresh for the new group
+  document.getElementById('quiz-active').style.display = 'none';
+  document.getElementById('quiz-results').style.display = 'none';
+  document.getElementById('focus-card-wrap').style.display = 'none';
+  document.getElementById('focus-results').style.display = 'none';
+  document.getElementById('focus-setup').style.display = 'block';
+  document.getElementById('focus-count').value = '';
+  switchMode('flash');
   showCard();
   renderWordList();
 }
