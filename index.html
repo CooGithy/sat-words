@@ -846,6 +846,9 @@
     <!-- ANALYTICS VIEW -->
     <div id="analytics-view" style="display:none;flex-direction:column;gap:14px;overflow-y:auto;max-height:calc(100vh - 120px);padding-bottom:20px;">
       <div id="analytics-content"></div>
+      <div style="margin-top:8px;text-align:center;">
+        <button class="btn btn-danger" style="font-size:0.72rem;padding:7px 18px;" onclick="openResetAnalyticsModal()">↺ Reset Analytics</button>
+      </div>
     </div>
 
     <!-- ADD WORDS -->
@@ -2737,6 +2740,33 @@ function resetPreset() {
 function closeResetModal() {
   document.getElementById('reset-preset-modal').classList.remove('open');
 }
+function openResetAnalyticsModal() {
+  document.getElementById('reset-analytics-modal').classList.add('open');
+}
+
+function closeResetAnalyticsModal() {
+  document.getElementById('reset-analytics-modal').classList.remove('open');
+}
+
+function confirmResetAnalytics() {
+  closeResetAnalyticsModal();
+  // Clear bookmarks
+  localStorage.removeItem('sat-bookmarks');
+  // Clear quiz stats
+  appStats = { quizzesTaken: 0, bestScore: 0 };
+  saveStats();
+  // Clear word-level analytics
+  localStorage.removeItem('sat-word-analytics');
+  // Clear SRS schedule + daily record for all groups
+  localStorage.removeItem('sat-srs');
+  localStorage.removeItem('sat-srs-daily');
+  // Refresh UI
+  renderWordList();
+  if (activeMode === 'analytics') renderAnalytics();
+  if (activeMode === 'focus') { loadSRSSettings(); buildSRSSetup(); }
+  showToast('Analytics reset ✓');
+}
+
 function clearGroupAnalytics(groupId) {
   // Wipe SRS schedule and word analytics for all words in a group
   const grp = groups.find(g => g.id === groupId);
@@ -4471,6 +4501,8 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeDeleteModal();
   } else if (document.getElementById('reset-preset-modal').classList.contains('open')) {
     if (e.key === 'Escape') closeResetModal();
+  } else if (document.getElementById('reset-analytics-modal').classList.contains('open')) {
+    if (e.key === 'Escape') closeResetAnalyticsModal();
   }
 });
 </script>
@@ -4528,6 +4560,25 @@ document.addEventListener('keydown', e => {
     padding:4px 12px; font-size:0.8rem; cursor:pointer; font-weight:600;
   ">Undo</button>
 </div>
+<div class="modal-overlay" id="reset-analytics-modal" onclick="if(event.target===this)closeResetAnalyticsModal()">
+  <div class="modal" style="max-width:400px;">
+    <div style="font-size:1.5rem;margin-bottom:10px;">⚠️</div>
+    <div class="modal-title" style="margin-bottom:6px;color:#e05050;">Reset Analytics</div>
+    <div class="modal-msg" style="margin-bottom:8px;">This will permanently clear:</div>
+    <ul style="font-size:0.78rem;color:var(--muted);text-align:left;margin:0 0 20px 20px;line-height:1.8;">
+      <li>All quiz scores &amp; history</li>
+      <li>All bookmarks</li>
+      <li>Word-level analytics</li>
+      <li>Spaced Review schedule &amp; intervals</li>
+    </ul>
+    <div class="modal-msg" style="margin-bottom:24px;font-weight:600;color:var(--text);">Your flashcard groups and words will <em>not</em> be affected.</div>
+    <div class="modal-btns">
+      <button class="btn btn-danger" onclick="confirmResetAnalytics()" style="flex:1;">Reset Everything</button>
+      <button class="btn" onclick="closeResetAnalyticsModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="quiz-fullscreen-overlay" id="quiz-fullscreen-overlay">
   <div class="quiz-fullscreen-top">
     <span class="fc-fullscreen-counter" id="qfs-progress"></span>
