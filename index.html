@@ -811,6 +811,15 @@
 
 <script>
 
+// ── EARLY DECLARATIONS (prevent Safari TDZ errors) ──
+let _bmFilterActive = false;
+let _quizSource = 'all', _focusSource = 'all';
+let _wordSearchQuery = '';
+let _toastTimer = null;
+let _satPresetLoaded = false;
+let _fcIdxByGroup = {};
+let _newGroupType = 'empty';
+
 // ── STATS ──
 let appStats = JSON.parse(localStorage.getItem('sat-stats') || '{"quizzesTaken":0,"bestScore":0}');
 function saveStats() { localStorage.setItem('sat-stats', JSON.stringify(appStats)); }
@@ -2328,7 +2337,6 @@ const SAT_WORDS_EMBEDDED = [
   {"word":"Zephyr","definition":"A soft gentle breeze"}
 ];
 let SAT_PRESET_WORDS = SAT_WORDS_EMBEDDED.slice();
-let _satPresetLoaded = false;
 
 function migrateData() {
   let g = JSON.parse(localStorage.getItem('sat-groups') || 'null');
@@ -2402,7 +2410,7 @@ function saveGroups() { localStorage.setItem('sat-groups', JSON.stringify(groups
 
 let words = (getActiveGroup() || { words: [] }).words;
 let fcOrder = words.map((_,i)=>i);
-let _fcIdxByGroup = JSON.parse(localStorage.getItem('sat-fc-idx') || '{}');
+_fcIdxByGroup = JSON.parse(localStorage.getItem('sat-fc-idx') || '{}');
 let fcIdx = _fcIdxByGroup[activeGroupId] || 0;
 if (fcIdx >= fcOrder.length) fcIdx = 0;
 
@@ -2489,7 +2497,6 @@ function renderGroupsPage() {
   grid.appendChild(nc);
 }
 
-let _newGroupType = 'empty';
 
 function createGroup() {
   _newGroupType = 'empty';
@@ -2735,7 +2742,6 @@ let quizPool = [];
 let quizAsked = [];
 let quizAnswered = false, quizCorrectIdx = 0;
 let quizCorrectWords = [], quizWrongWords = [];
-let _quizSource = 'all', _focusSource = 'all';
 
 function selectQuizMode(m) {
   quizMode = m;
@@ -3426,7 +3432,6 @@ document.addEventListener('keydown', function(e) {
   else if (e.key === 'Escape') { closeFullscreenFlash(); }
 });
 
-let _bmFilterActive = false;
 function toggleBookmarkFilter() {
   _bmFilterActive = !_bmFilterActive;
   const btn = document.getElementById('bm-filter-btn');
@@ -3599,7 +3604,6 @@ function hideUndoToast() {
 }
 
 // ── INLINE TOAST (replaces alert) ──
-let _toastTimer = null;
 function showToast(msg, durationMs) {
   durationMs = durationMs || 3000;
   const el = document.getElementById('inline-toast');
@@ -3611,7 +3615,6 @@ function showToast(msg, durationMs) {
 }
 
 // ── WORD SEARCH ──
-let _wordSearchQuery = '';
 
 function onWordSearch(val) {
   _wordSearchQuery = val.trim().toLowerCase();
