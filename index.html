@@ -3183,8 +3183,12 @@ function getSRSDueWords() {
   const allIntroduced = newWords.length === 0;
 
   if (allIntroduced) {
-    // All words introduced — just due reviews, nothing to add
-    return [...reviewDue];
+    // All words introduced — just due reviews, shuffled
+    for (let i = reviewDue.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [reviewDue[i], reviewDue[j]] = [reviewDue[j], reviewDue[i]];
+    }
+    return reviewDue;
   }
 
   // Still have unseen words — always add 30 new ON TOP of due reviews
@@ -3481,15 +3485,17 @@ function showSRSCard() {
   document.getElementById('foc-word').textContent = w.word;
   document.getElementById('foc-def').textContent = w.definition;
   startWordTimer(w.word);
-  const remaining = _srsQueue.length - _srsSessionIdx;
+  const originalCount = _srsQueue.filter((wi2, idx) => _srsQueue.indexOf(wi2) === idx).length;
+  const resolved = _srsResolved.size;
+  const remaining = originalCount - resolved;
   document.getElementById('foc-counter').textContent = `${remaining} remaining`;
   // Show interval hint
   document.getElementById('srs-interval-hint').textContent = getIntervalHint(w.word);
   // Compute what each rating would schedule and show on buttons
   updateRatingHints(w.word);
-  // Progress bar
+  // Progress bar based on resolved words, not queue position
   const progressFill = document.getElementById('srs-progress-fill');
-  const pct = Math.round((_srsSessionIdx / _srsQueue.length) * 100);
+  const pct = Math.round((resolved / Math.max(1, originalCount)) * 100);
   if (progressFill) progressFill.style.width = pct + '%';
   if (_srsfsOpen) srsfsSync();
 }
@@ -3576,11 +3582,11 @@ function showSRSResults() {
   const elapsed = _srsStartTime ? Math.round((Date.now() - _srsStartTime) / 1000) : 0;
   const mins = Math.floor(elapsed / 60), secs = elapsed % 60;
   const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
-  const total = _srsQueue.length;
+  const uniqueWords = new Set(_srsQueue).size;
   const easyCount = Object.values(_srsResults).filter(r => r.rating === 'easy' || r.rating === 'mid').length;
-  const pct = Math.round((easyCount / total) * 100);
+  const pct = Math.round((easyCount / Math.max(1, uniqueWords)) * 100);
   document.getElementById('foc-mastered-pct').textContent = pct + '% Known';
-  document.getElementById('foc-results-sub').textContent = `${total} word${total !== 1 ? 's' : ''} reviewed · ${timeStr}`;
+  document.getElementById('foc-results-sub').textContent = `${uniqueWords} word${uniqueWords !== 1 ? 's' : ''} reviewed · ${timeStr}`;
   const midWords = [], easyWords = [];
   const displaySeen = new Set();
   _srsQueue.forEach(wi => {
@@ -3657,7 +3663,6 @@ function studyWrong() {
 function startFocus() { startSRS(); }
 function selectFocusSource(src) {}
 function updateFocusWordCountLabel() {}
-function shuffleFocus() {}
 function showFocusCard() { showSRSCard(); }
 function currentFocusItem() { return null; }
 function downloadFocusJSON() {}
