@@ -3177,15 +3177,18 @@ function getSRSDueWords() {
     }
   });
 
-  if (limit === Infinity) {
-    // No limit — reviews + all new words
-    return [...reviewDue, ...newWords];
+  const allIntroduced = newWords.length === 0;
+
+  if (allIntroduced) {
+    // All words introduced — just due reviews, nothing to add
+    return [...reviewDue];
   }
 
-  // With a limit: reviews take priority, new words fill remaining slots
-  // New words already introduced today (newSeen) count toward the new-word budget
-  const newBudget = Math.max(0, limit - reviewDue.length - newSeenToday.size);
+  // Still have unseen words — always add 30 new ON TOP of due reviews
+  // newSeen tracks new words already introduced today (persists across refreshes)
   const freshNewWords = newWords.filter(i => !newSeenToday.has(words[i]?.word));
+  const alreadyNewToday = newSeenToday.size;
+  const newBudget = Math.max(0, 30 - alreadyNewToday); // 30 new per day, not 30 total
   const newToAdd = freshNewWords.slice(0, newBudget);
 
   return [...reviewDue, ...newToAdd];
