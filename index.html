@@ -795,12 +795,6 @@
         <div class="srs-meta" id="srs-meta"></div>
         <button class="srs-settings-toggle" onclick="toggleSRSSettings()">⚙ Settings</button>
         <div class="srs-settings-panel" id="srs-settings-panel">
-          <div class="srs-setting-row">
-            <div class="srs-setting-label">Daily limit<span>Max words per session (0 = no limit)</span></div>
-            <input class="srs-setting-input" id="srs-limit-input" type="number" min="0" max="9999" placeholder="∞" oninput="saveSRSSettings()" />
-          </div>
-
-          <div style="border-top:1px solid var(--border);margin:12px 0 12px;"></div>
           <div class="srs-setting-label" style="margin-bottom:8px;">Review data<span>Back up or restore your schedule across devices</span></div>
           <div style="display:flex;gap:8px;">
             <button class="btn" style="flex:1;font-size:0.7rem;padding:7px 0;" onclick="exportSRSData()">↓ Export all data</button>
@@ -3099,7 +3093,10 @@ function saveSRSData(data) {
 }
 function getGroupSRS() {
   const all = getSRSData();
-  return all[activeGroupId] || {};
+  const grp = all[activeGroupId] || {};
+  // Normalise legacy records missing the reviews counter — treat as already seen once
+  Object.values(grp).forEach(rec => { if (rec.reviews === undefined) rec.reviews = 1; });
+  return grp;
 }
 function saveGroupSRS(groupData) {
   const all = getSRSData();
@@ -3219,34 +3216,38 @@ function getNextDueDate() {
 function srsSchedule(wordStr, rating) {
   const srs = getGroupSRS();
   const today = todayStr();
-  const isNew = !srs[wordStr]; // true if this is the very first review
-  let rec = srs[wordStr] || { interval: 1, ease: 2.5, due: today, lastReviewed: null, reviews: 0 };
+  let rec = srs[wordStr] || { interval: 0, ease: 2.5, due: today, lastReviewed: null, reviews: 0 };
   if (!rec.reviews) rec.reviews = 0;
 
-  if (isNew || rec.reviews === 0) {
-    // First review ever — always tomorrow regardless of rating
-    // Hard: stays at 1. Mid/Easy: also 1, but ease adjusts for future growth
+  // reviews=0 means this word has NEVER been reviewed before (brand new)
+  // reviews=1 means reviewed once before (saw it yesterday, coming back today)
+  // etc.
+  if (rec.reviews === 0) {
+    // First time seeing this word — ALWAYS due tomorrow, no exceptions
     rec.interval = 1;
+    // Adjust ease slightly so future growth reflects how well they know it
     if (rating === 'hard') rec.ease = Math.max(1.3, rec.ease - 0.2);
     else if (rating === 'mid') rec.ease = Math.max(1.3, rec.ease - 0.05);
-    // easy: ease unchanged on first pass, grows from second review onward
+    // easy: ease stays at 2.5, will compound well from 2nd review
   } else {
-    // Subsequent reviews — interval grows based on rating
+    // Already seen before — interval grows based on rating
     if (rating === 'hard') {
+      // Don't know it — reset to tomorrow
       rec.interval = 1;
       rec.ease = Math.max(1.3, rec.ease - 0.2);
     } else if (rating === 'mid') {
+      // Kinda — small growth, minimum 2 days
       rec.interval = Math.max(2, Math.round(rec.interval * 1.2));
       rec.ease = Math.max(1.3, rec.ease - 0.15);
-    } else { // easy
+    } else {
+      // Know it — full interval × ease factor, minimum 2 days
       rec.interval = Math.max(2, Math.round(rec.interval * rec.ease));
       rec.ease = Math.min(3.0, rec.ease + 0.1);
     }
   }
 
-  rec.reviews = (rec.reviews || 0) + 1;
+  rec.reviews += 1;
   rec.lastReviewed = today;
-  // Always due tomorrow minimum
   rec.due = addDays(today, rec.interval);
   srs[wordStr] = rec;
   saveGroupSRS(srs);
@@ -3327,28 +3328,16 @@ function importSRSData(event) {
 }
 
 function toggleSRSSettings() {
-  // Lock settings if any words were reviewed today
-  const _dr = getDailyRecord();
-  if ((_dr.reviewedToday || []).length > 0) {
-    showToast('Settings locked — you already reviewed today. Resets at midnight.');
-    return;
-  }
   const panel = document.getElementById('srs-settings-panel');
   panel.classList.toggle('open');
 }
 
 function loadSRSSettings() {
-  const saved = JSON.parse(localStorage.getItem('sat-srs-settings') || '{}');
-  _srsSettings = { limit: saved.limit || 0 };
-  const limitEl = document.getElementById('srs-limit-input');
-  if (limitEl) limitEl.value = _srsSettings.limit || '';
+  _srsSettings = { limit: 30 }; // hardcoded daily cap
 }
 
 function saveSRSSettings() {
-  const limitEl = document.getElementById('srs-limit-input');
-  _srsSettings.limit = parseInt(limitEl?.value) || 0;
-  localStorage.setItem('sat-srs-settings', JSON.stringify(_srsSettings));
-  buildSRSSetup();
+  _srsSettings = { limit: 30 };
 }
 
 function buildSRSSetup() {
@@ -3359,16 +3348,7 @@ function buildSRSSetup() {
   const startArea = document.getElementById('srs-start-area');
   const caughtUp = document.getElementById('srs-caught-up');
   const metaEl = document.getElementById('srs-meta');
-  // Lock settings if any words reviewed today
-  const _dailyLock = (getDailyRecord().reviewedToday || []).length > 0;
-  const toggleBtn = document.querySelector('.srs-settings-toggle');
-  const limitInput = document.getElementById('srs-limit-input');
-  if (toggleBtn) {
-    toggleBtn.style.opacity = _dailyLock ? '0.4' : '';
-    toggleBtn.style.cursor = _dailyLock ? 'not-allowed' : '';
-    toggleBtn.title = _dailyLock ? 'Settings locked until tomorrow — review already started today' : '';
-  }
-  if (limitInput) { limitInput.disabled = _dailyLock; }
+
 
   metaEl.textContent = '';
 
