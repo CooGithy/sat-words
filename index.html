@@ -3414,23 +3414,27 @@ function startPracticeSession() {
   openFullscreenSRS();
 }
 
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 function startSRS() {
-  // Restore saved session if same group + same day
+  // Only restore a mid-session if user had already rated some words
   let due;
   try {
     const saved = JSON.parse(localStorage.getItem('sat-srs-session') || 'null');
-    if (saved && saved.groupId === activeGroupId && saved.date === todayStr() && saved.queue?.length) {
-      due = saved.queue;
+    if (saved && saved.groupId === activeGroupId && saved.date === todayStr() && saved.queue?.length && saved.hasProgress) {
+      due = shuffle([...saved.queue]);
     }
   } catch(e) {}
   if (!due) {
     due = getSRSDueWords();
     if (due.length === 0) { buildSRSSetup(); return; }
-  }
-  // Always shuffle for randomness
-  for (let i = due.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [due[i], due[j]] = [due[j], due[i]];
+    shuffle(due);
   }
   _srsPracticeMode = false;
   _srsQueue = due;
@@ -3547,7 +3551,7 @@ function rateFocus(rating) {
     // Save remaining queue (unresolved words) so exiting and returning restores it
     const remaining = [...new Set(_srsQueue.slice(_srsSessionIdx + 1))].filter(i => !_srsResolved.has(i));
     if (remaining.length > 0) {
-      localStorage.setItem('sat-srs-session', JSON.stringify({ groupId: _srsSessionGroupId, queue: remaining, date: todayStr() }));
+      localStorage.setItem('sat-srs-session', JSON.stringify({ groupId: _srsSessionGroupId, queue: remaining, date: todayStr(), hasProgress: true }));
     } else {
       localStorage.removeItem('sat-srs-session');
     }
