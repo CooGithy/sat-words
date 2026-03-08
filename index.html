@@ -3254,8 +3254,9 @@ function getIntervalHint(wordStr) {
 let _srsQueue = [];     // array of word indices for this session
 let _srsSessionIdx = 0; // current position in queue
 let _srsResults = {};   // wordIdx -> 'hard'|'mid'|'easy'
+let _srsRequeued = new Set(); // word indices already re-queued this session (hard once only)
 let _srsStartTime = null;
-let _srsSettings = { limit: 0 }; // 0 = unlimited
+let _srsSettings = { limit: 30 };
 
 function exportSRSData() {
   // Full app backup — groups, words, bookmarks, analytics, SRS schedule
@@ -3411,6 +3412,7 @@ function startSRS() {
   _srsQueue = due;
   _srsSessionIdx = 0;
   _srsResults = {};
+  _srsRequeued = new Set();
   _srsStartTime = Date.now();
   focusSet = [...due];
   ctxFocus = 'all';
@@ -3483,14 +3485,19 @@ function rateFocus(rating) {
   recordAnalytic(w.word, rating === 'easy' ? 'focusEasy' : rating === 'mid' ? 'focusMid' : 'focusHard');
 
   if (rating === 'hard') {
-    // Re-queue this card ~3 positions ahead so it shows up again this session
-    const reinsertAt = Math.min(_srsSessionIdx + 3, _srsQueue.length);
-    _srsQueue.splice(reinsertAt, 0, wi);
-    // Don't schedule yet — will schedule when they eventually get mid or easy on it
+    // Re-queue once if not already re-queued this session
+    if (!_srsRequeued.has(wi)) {
+      _srsRequeued.add(wi);
+      const reinsertAt = Math.min(_srsSessionIdx + 3, _srsQueue.length);
+      _srsQueue.splice(reinsertAt, 0, wi);
+    }
+    // Mark as hard — will be scheduled tomorrow at session end if still hard
     _srsResults[wi] = { rating: 'hard', interval: null };
   } else {
+    // mid or easy — schedule it, overrides any previous hard
     const newInterval = srsSchedule(w.word, rating);
     _srsResults[wi] = { rating, interval: newInterval };
+    _srsRequeued.delete(wi); // no longer needs re-queuing
   }
 
   _srsSessionIdx++;
@@ -3510,15 +3517,35 @@ function showSRSResults() {
   const pct = Math.round((easyCount / total) * 100);
   document.getElementById('foc-mastered-pct').textContent = pct + '% Known';
   document.getElementById('foc-results-sub').textContent = `${total} word${total !== 1 ? 's' : ''} reviewed · ${timeStr}`;
-  const hardWords = [], midWords = [], easyWords = [];
+  // Schedule any words that ended the session as hard → tomorrow
+  const srs = getGroupSRS();
+  const seen = new Set();
   _srsQueue.forEach(wi => {
+    if (seen.has(wi)) return; seen.add(wi);
+    const r = _srsResults[wi];
+    if (!r || r.rating === 'hard') {
+      // Only rated hard — schedule for tomorrow
+      const w = words[wi]; if (!w) return;
+      let rec = srs[w.word] || { interval: 1, due: todayStr(), lastReviewed: null, reviews: 0 };
+      if (!rec.reviews) rec.reviews = 0;
+      rec.interval = 1;
+      rec.reviews += 1;
+      rec.lastReviewed = todayStr();
+      rec.due = addDays(todayStr(), 1);
+      srs[w.word] = rec;
+    }
+  });
+  saveGroupSRS(srs);
+
+  const hardWords = [], midWords = [], easyWords = [];
+  const resultsSeen = new Set();
+  _srsQueue.forEach(wi => {
+    if (resultsSeen.has(wi)) return; resultsSeen.add(wi);
     const w = words[wi]; if (!w) return;
     const r = _srsResults[wi];
-    const interval = r?.interval || 1;
-    const label = `${w.word} (${interval}d)`;
-    if (!r || r.rating === 'hard') hardWords.push(label);
-    else if (r.rating === 'mid') midWords.push(label);
-    else easyWords.push(label);
+    if (!r || r.rating === 'hard') hardWords.push(w.word); // no interval shown
+    else if (r.rating === 'mid') midWords.push(`${w.word} (+${r.interval}d)`);
+    else easyWords.push(`${w.word} (+${r.interval}d)`);
   });
   const lists = document.getElementById('foc-result-lists');
   lists.innerHTML = '';
