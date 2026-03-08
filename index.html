@@ -3194,7 +3194,13 @@ function getSRSDueWords() {
   const newBudget = Math.max(0, 30 - alreadyNewToday); // 30 new per day, not 30 total
   const newToAdd = freshNewWords.slice(0, newBudget);
 
-  return [...reviewDue, ...newToAdd];
+  const result = [...reviewDue, ...newToAdd];
+  // Shuffle at source so order is never alphabetical
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
 }
 
 // Words reviewed today — for practice-only re-run (no rescheduling)
