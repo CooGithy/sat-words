@@ -3129,7 +3129,7 @@ function getDailyRecord() {
   const rec = all[activeGroupId];
   if (rec && rec.date === today) return rec;
   // New day — reset
-  const fresh = { date: today, newSeen: [] };
+  const fresh = { date: today, newSeen: [], reviewedToday: [] };
   all[activeGroupId] = fresh;
   localStorage.setItem('sat-srs-daily', JSON.stringify(all));
   return fresh;
@@ -3138,9 +3138,21 @@ function getDailyRecord() {
 function markNewWordsSeen(wordStrArr) {
   const all = JSON.parse(localStorage.getItem('sat-srs-daily') || '{}');
   const today = todayStr();
-  const rec = all[activeGroupId] || { date: today, newSeen: [] };
-  if (rec.date !== today) { rec.date = today; rec.newSeen = []; }
+  const rec = all[activeGroupId] || { date: today, newSeen: [], reviewedToday: [] };
+  if (rec.date !== today) { rec.date = today; rec.newSeen = []; rec.reviewedToday = []; }
+  if (!rec.reviewedToday) rec.reviewedToday = [];
   wordStrArr.forEach(w => { if (!rec.newSeen.includes(w)) rec.newSeen.push(w); });
+  all[activeGroupId] = rec;
+  localStorage.setItem('sat-srs-daily', JSON.stringify(all));
+}
+
+function markWordsReviewedToday(wordStrArr) {
+  const all = JSON.parse(localStorage.getItem('sat-srs-daily') || '{}');
+  const today = todayStr();
+  const rec = all[activeGroupId] || { date: today, newSeen: [], reviewedToday: [] };
+  if (rec.date !== today) { rec.date = today; rec.newSeen = []; rec.reviewedToday = []; }
+  if (!rec.reviewedToday) rec.reviewedToday = [];
+  wordStrArr.forEach(w => { if (!rec.reviewedToday.includes(w)) rec.reviewedToday.push(w); });
   all[activeGroupId] = rec;
   localStorage.setItem('sat-srs-daily', JSON.stringify(all));
 }
@@ -3148,6 +3160,7 @@ function markNewWordsSeen(wordStrArr) {
 function getSRSDueWords() {
   const today = todayStr();
   const srs = getGroupSRS();
+  const limit = _srsSettings.limit || Infinity;
   const reviewDue = [];
   const newDue = [];
   words.forEach((w, i) => {
@@ -3155,10 +3168,14 @@ function getSRSDueWords() {
     if (!rec) newDue.push(i);
     else if (rec.due <= today) reviewDue.push(i);
   });
-  // Reviews first, then new words
   const combined = [...reviewDue, ...newDue];
-  const limit = _srsSettings.limit || Infinity;
-  return combined.slice(0, limit);
+  if (limit === Infinity) return combined;
+  // With a limit: subtract words already reviewed today so the cap is per-day, not per-session
+  const dailyRec = getDailyRecord();
+  const alreadyDone = new Set(dailyRec.reviewedToday || []);
+  const remaining = combined.filter(i => !alreadyDone.has(words[i]?.word));
+  const stillOwed = Math.max(0, limit - alreadyDone.size);
+  return remaining.slice(0, stillOwed);
 }
 
 function getNextDueDate() {
@@ -3274,6 +3291,8 @@ function importSRSData(event) {
 }
 
 function toggleSRSSettings() {
+  // Don't allow opening settings during an active session
+  if (_srsQueue.length > 0 && _srsSessionIdx < _srsQueue.length) return;
   const panel = document.getElementById('srs-settings-panel');
   panel.classList.toggle('open');
 }
@@ -3300,6 +3319,12 @@ function buildSRSSetup() {
   const startArea = document.getElementById('srs-start-area');
   const caughtUp = document.getElementById('srs-caught-up');
   const metaEl = document.getElementById('srs-meta');
+  // Lock/unlock settings toggle based on whether session is active
+  const sessionActive = _srsQueue.length > 0 && _srsSessionIdx < _srsQueue.length;
+  const toggleBtn = document.querySelector('.srs-settings-toggle');
+  const limitInput = document.getElementById('srs-limit-input');
+  if (toggleBtn) { toggleBtn.style.opacity = sessionActive ? '0.35' : ''; toggleBtn.style.cursor = sessionActive ? 'not-allowed' : ''; toggleBtn.title = sessionActive ? 'Finish your session before changing settings' : ''; }
+  if (limitInput) { limitInput.disabled = sessionActive; }
 
   metaEl.textContent = '';
 
@@ -3346,10 +3371,13 @@ function startSRS() {
   _srsStartTime = Date.now();
   focusSet = [...due];
   ctxFocus = 'all';
-  // Mark new words as seen today so cap persists across refreshes
+  // Mark new words as seen today
   const srs = getGroupSRS();
   const newWordsInSession = due.map(i => words[i]?.word).filter(w => w && !srs[w]);
   if (newWordsInSession.length) markNewWordsSeen(newWordsInSession);
+  // Mark ALL session words as reviewed today so daily limit is a hard daily cap
+  const allSessionWords = due.map(i => words[i]?.word).filter(Boolean);
+  if (allSessionWords.length) markWordsReviewedToday(allSessionWords);
   document.getElementById('focus-setup').style.display = 'none';
   document.getElementById('focus-results').style.display = 'none';
   document.getElementById('focus-card-wrap').style.display = 'flex';
