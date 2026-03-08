@@ -3255,7 +3255,8 @@ let _srsQueue = [];
 let _srsSessionIdx = 0;
 let _srsResults = {};
 let _srsRequeued = new Set();
-let _srsSessionGroupId = null; // group ID this session belongs to
+let _srsResolved = new Set(); // word indices rated mid or easy (done for this session)
+let _srsSessionGroupId = null;
 let _srsStartTime = null;
 let _srsSettings = { limit: 30 };
 
@@ -3393,6 +3394,7 @@ function startPracticeSession() {
   _srsSessionIdx = 0;
   _srsResults = {};
   _srsRequeued = new Set();
+  _srsResolved = new Set();
   _srsStartTime = Date.now();
   focusSet = [...q];
   ctxFocus = 'all';
@@ -3404,26 +3406,39 @@ function startPracticeSession() {
 }
 
 function startSRS() {
-  const due = getSRSDueWords();
-  if (due.length === 0) { buildSRSSetup(); return; }
-  // Shuffle
-  for (let i = due.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [due[i], due[j]] = [due[j], due[i]];
+  // Restore saved session if same group + same day
+  let due;
+  try {
+    const saved = JSON.parse(localStorage.getItem('sat-srs-session') || 'null');
+    if (saved && saved.groupId === activeGroupId && saved.date === todayStr() && saved.queue?.length) {
+      due = saved.queue;
+    }
+  } catch(e) {}
+  if (!due) {
+    due = getSRSDueWords();
+    if (due.length === 0) { buildSRSSetup(); return; }
+    // Shuffle only fresh sessions
+    for (let i = due.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [due[i], due[j]] = [due[j], due[i]];
+    }
   }
   _srsQueue = due;
   _srsSessionIdx = 0;
   _srsResults = {};
   _srsRequeued = new Set();
+  _srsResolved = new Set();
   _srsStartTime = Date.now();
   focusSet = [...due];
   ctxFocus = 'all';
-  // Mark only NEW words as seen today (so they don't re-appear as new tomorrow)
-  const srs = getGroupSRS();
-  const newWordsInSession = due.map(i => words[i]?.word).filter(w => w && !srs[w]);
-  if (newWordsInSession.length) markNewWordsSeen(newWordsInSession);
   // Store which group this session belongs to
   _srsSessionGroupId = activeGroupId;
+  // Save session queue to localStorage so exiting and returning restores it
+  localStorage.setItem('sat-srs-session', JSON.stringify({
+    groupId: activeGroupId,
+    queue: due,
+    date: todayStr()
+  }));
   document.getElementById('focus-setup').style.display = 'none';
   document.getElementById('focus-results').style.display = 'none';
   document.getElementById('focus-card-wrap').style.display = 'flex';
@@ -3432,7 +3447,15 @@ function startSRS() {
 }
 
 function showSRSCard() {
-  if (_srsSessionIdx >= _srsQueue.length) { showSRSResults(); return; }
+  // Session ends when we've reached end of queue AND all words are resolved (mid/easy)
+  if (_srsSessionIdx >= _srsQueue.length) {
+    const originalCount = _srsQueue.filter((wi, idx) => _srsQueue.indexOf(wi) === idx).length;
+    if (_srsResolved.size >= originalCount) { showSRSResults(); return; }
+    // Still unresolved words — re-queue them and continue
+    const unresolved = [...new Set(_srsQueue)].filter(wi => !_srsResolved.has(wi));
+    unresolved.forEach(wi => _srsQueue.push(wi));
+    if (_srsQueue.length === _srsSessionIdx) { showSRSResults(); return; } // safety
+  }
   const wi = _srsQueue[_srsSessionIdx];
   const w = words[wi];
   if (!w) { _srsSessionIdx++; showSRSCard(); return; }
@@ -3485,40 +3508,39 @@ function rateFocus(rating) {
   }
   recordAnalytic(w.word, rating === 'easy' ? 'focusEasy' : rating === 'mid' ? 'focusMid' : 'focusHard');
 
-  // Mark this word reviewed today under the session's group (not current activeGroupId)
-  if (_srsSessionGroupId) {
-    const all = JSON.parse(localStorage.getItem('sat-srs-daily') || '{}');
-    const today = todayStr();
-    const rec = all[_srsSessionGroupId] || { date: today, newSeen: [], reviewedToday: [] };
-    if (rec.date !== today) { rec.date = today; rec.newSeen = []; rec.reviewedToday = []; }
-    if (!rec.reviewedToday) rec.reviewedToday = [];
-    if (!rec.reviewedToday.includes(w.word)) rec.reviewedToday.push(w.word);
-    all[_srsSessionGroupId] = rec;
-    localStorage.setItem('sat-srs-daily', JSON.stringify(all));
-  }
-
   if (rating === 'hard') {
-    // Re-queue once so it comes back in a few cards
-    if (!_srsRequeued.has(wi)) {
-      _srsRequeued.add(wi);
-      const reinsertAt = Math.min(_srsSessionIdx + 1 + Math.floor(Math.random() * 4), _srsQueue.length);
-      _srsQueue.splice(reinsertAt, 0, wi);
-    } else {
-      // Already re-queued and still hard — schedule for tomorrow
-      _srsResults[wi] = { rating: 'hard', interval: 1 };
-      const srs = getGroupSRS();
-      let rec2 = srs[w.word] || { interval: 1, due: todayStr(), lastReviewed: null, reviews: 0 };
-      if (!rec2.reviews) rec2.reviews = 0;
-      rec2.interval = 1; rec2.reviews += 1;
-      rec2.lastReviewed = todayStr();
-      rec2.due = addDays(todayStr(), 1);
-      srs[w.word] = rec2; saveGroupSRS(srs);
-    }
-    if (!_srsResults[wi]) _srsResults[wi] = { rating: 'hard', interval: null };
+    // Re-queue ahead — loops until mid or easy. NOT marked reviewedToday so re-entry still shows it.
+    const reinsertAt = Math.min(_srsSessionIdx + 1 + Math.floor(Math.random() * 3), _srsQueue.length);
+    _srsQueue.splice(reinsertAt, 0, wi);
+    _srsResults[wi] = { rating: 'hard', interval: null };
   } else {
-    // mid or easy — schedule with normal growth
+    // mid or easy — schedule, resolve, and mark reviewed/seen
     const newInterval = srsSchedule(w.word, rating);
     _srsResults[wi] = { rating, interval: newInterval };
+    _srsResolved.add(wi);
+    if (_srsSessionGroupId) {
+      const all = JSON.parse(localStorage.getItem('sat-srs-daily') || '{}');
+      const today = todayStr();
+      const drec = all[_srsSessionGroupId] || { date: today, newSeen: [], reviewedToday: [] };
+      if (drec.date !== today) { drec.date = today; drec.newSeen = []; drec.reviewedToday = []; }
+      if (!drec.reviewedToday) drec.reviewedToday = [];
+      if (!drec.newSeen) drec.newSeen = [];
+      if (!drec.reviewedToday.includes(w.word)) drec.reviewedToday.push(w.word);
+      // Also mark as newSeen if brand new word
+      const srsNow = getGroupSRS();
+      if (!srsNow[w.word] || srsNow[w.word].reviews <= 1) {
+        if (!drec.newSeen.includes(w.word)) drec.newSeen.push(w.word);
+      }
+      all[_srsSessionGroupId] = drec;
+      localStorage.setItem('sat-srs-daily', JSON.stringify(all));
+    }
+    // Save remaining queue (unresolved words) so exiting and returning restores it
+    const remaining = [...new Set(_srsQueue.slice(_srsSessionIdx + 1))].filter(i => !_srsResolved.has(i));
+    if (remaining.length > 0) {
+      localStorage.setItem('sat-srs-session', JSON.stringify({ groupId: _srsSessionGroupId, queue: remaining, date: todayStr() }));
+    } else {
+      localStorage.removeItem('sat-srs-session');
+    }
   }
 
   _srsSessionIdx++;
@@ -3527,6 +3549,7 @@ function rateFocus(rating) {
 
 function showSRSResults() {
   if (_srsfsOpen) closeFullscreenSRS();
+  localStorage.removeItem('sat-srs-session'); // session complete, clear save
   stopWordTimer();
   document.getElementById('focus-card-wrap').style.display = 'none';
   document.getElementById('focus-results').style.display = 'block';
@@ -3538,24 +3561,6 @@ function showSRSResults() {
   const pct = Math.round((easyCount / total) * 100);
   document.getElementById('foc-mastered-pct').textContent = pct + '% Known';
   document.getElementById('foc-results-sub').textContent = `${total} word${total !== 1 ? 's' : ''} reviewed · ${timeStr}`;
-  // Schedule any hard words that were only seen once (re-queued but still hard)
-  const srsFinal = getGroupSRS();
-  const resultsSeen = new Set();
-  _srsQueue.forEach(wi => {
-    if (resultsSeen.has(wi)) return; resultsSeen.add(wi);
-    const r = _srsResults[wi];
-    const w = words[wi]; if (!w) return;
-    if (!r || (r.rating === 'hard' && !r.interval)) {
-      let rec = srsFinal[w.word] || { interval: 1, due: todayStr(), lastReviewed: null, reviews: 0 };
-      if (!rec.reviews) rec.reviews = 0;
-      rec.interval = 1; rec.reviews += 1;
-      rec.lastReviewed = todayStr();
-      rec.due = addDays(todayStr(), 1);
-      srsFinal[w.word] = rec;
-    }
-  });
-  saveGroupSRS(srsFinal);
-
   const hardWords = [], midWords = [], easyWords = [];
   const displaySeen = new Set();
   _srsQueue.forEach(wi => {
