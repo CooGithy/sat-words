@@ -3164,23 +3164,34 @@ function getSRSDueWords() {
   const limit = _srsSettings.limit || Infinity;
   const dailyRec = getDailyRecord();
   const alreadyDone = new Set(dailyRec.reviewedToday || []);
-  const reviewDue = [];
-  const newDue = [];
+  const newSeenToday = new Set(dailyRec.newSeen || []);
+
+  // Separate due reviews from unseen new words
+  const reviewDue = [];   // scheduled reviews whose due date has arrived
+  const newWords = [];    // words never reviewed before
+
   words.forEach((w, i) => {
+    if (alreadyDone.has(w.word)) return; // already done in today's session
     const rec = srs[w.word];
     if (!rec) {
-      // New word — never reviewed before. Always eligible unless already seen today.
-      if (!alreadyDone.has(w.word)) newDue.push(i);
-    } else if (rec.due <= today && !alreadyDone.has(w.word)) {
-      // Scheduled review due today and not yet done today
-      reviewDue.push(i);
+      newWords.push(i); // never studied
+    } else if (rec.due <= today) {
+      reviewDue.push(i); // scheduled review is due
     }
   });
-  const combined = [...reviewDue, ...newDue];
-  if (limit === Infinity) return combined;
-  // Limit counts against total done today
-  const stillOwed = Math.max(0, limit - alreadyDone.size);
-  return combined.slice(0, stillOwed);
+
+  if (limit === Infinity) {
+    // No limit — reviews + all new words
+    return [...reviewDue, ...newWords];
+  }
+
+  // With a limit: reviews take priority, new words fill remaining slots
+  // New words already introduced today (newSeen) count toward the new-word budget
+  const newBudget = Math.max(0, limit - reviewDue.length - newSeenToday.size);
+  const freshNewWords = newWords.filter(i => !newSeenToday.has(words[i]?.word));
+  const newToAdd = freshNewWords.slice(0, newBudget);
+
+  return [...reviewDue, ...newToAdd];
 }
 
 // Words reviewed today — for practice-only re-run (no rescheduling)
@@ -3375,7 +3386,10 @@ function buildSRSSetup() {
       const days = daysBetween(todayStr(), next);
       nextEl.textContent = days === 1 ? 'Next review tomorrow' : `Next review in ${days} days (${next})`;
     } else {
-      nextEl.textContent = words.length === 0 ? 'Add some words to get started.' : '';
+      const hasNewWords = words.some(w => !getGroupSRS()[w.word]);
+      nextEl.textContent = words.length === 0
+        ? 'Add some words to get started.'
+        : hasNewWords ? 'New words available tomorrow.' : '';
     }
     // Show practice button only if there are words reviewed today to re-practice
     const practiceBtn = document.getElementById('srs-practice-btn');
