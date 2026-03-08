@@ -927,7 +927,8 @@ let _customDisplayFont = null;
 let _customMonoFont = null;
 
 // ── STATS ──
-let appStats = JSON.parse(localStorage.getItem('sat-stats') || '{"quizzesTaken":0,"bestScore":0}');
+let appStats = JSON.parse(localStorage.getItem('sat-stats') || '{"quizzesTaken":0,"bestScore":0,"srsSessions":0}');
+if (!appStats.srsSessions) appStats.srsSessions = 0;
 function saveStats() { localStorage.setItem('sat-stats', JSON.stringify(appStats)); }
 
 // ── TIME TRACKING ──
@@ -1013,7 +1014,7 @@ function renderAnalytics() {
     var d = ga[w];
     totalCorrect      += d.quizCorrect  || 0;
     totalQuizAttempts += (d.quizCorrect || 0) + (d.quizWrong || 0);
-    totalFocusReps    += (d.focusHard   || 0) + (d.focusMid  || 0) + (d.focusEasy || 0);
+    totalFocusReps    += (d.focusHard   || 0) + (d.focusMid  || 0) + (d.focusEasy || 0); // kept for mastery calc
     totalSecs         += d.timeSeconds  || 0;
   });
   var overallPct = totalQuizAttempts > 0 ? Math.round((totalCorrect / totalQuizAttempts) * 100) : 0;
@@ -1057,7 +1058,7 @@ function renderAnalytics() {
   var html = '<div class="analytics-stat-grid">'
     + '<div class="analytics-stat-box"><div class="analytics-stat-val">' + overallPct + '%</div><div class="analytics-stat-lbl">Quiz Accuracy</div></div>'
     + '<div class="analytics-stat-box"><div class="analytics-stat-val">' + timeStr + '</div><div class="analytics-stat-lbl">Time Studying</div></div>'
-    + '<div class="analytics-stat-box"><div class="analytics-stat-val">' + totalFocusReps + '</div><div class="analytics-stat-lbl">Focus Reps</div></div>'
+    + '<div class="analytics-stat-box"><div class="analytics-stat-val">' + (appStats.srsSessions || 0) + '</div><div class="analytics-stat-lbl">Sessions Done</div></div>'
     + '</div>';
 
   html += '<div class="analytics-section"><div class="analytics-section-title">— Needs More Work</div>';
@@ -2748,7 +2749,7 @@ function confirmResetAnalytics() {
   // Clear bookmarks
   localStorage.removeItem('sat-bookmarks');
   // Clear quiz stats
-  appStats = { quizzesTaken: 0, bestScore: 0 };
+  appStats = { quizzesTaken: 0, bestScore: 0, srsSessions: 0 };
   saveStats();
   // Clear word-level analytics
   localStorage.removeItem('sat-word-analytics');
@@ -3549,7 +3550,9 @@ function rateFocus(rating) {
 
 function showSRSResults() {
   if (_srsfsOpen) closeFullscreenSRS();
-  localStorage.removeItem('sat-srs-session'); // session complete, clear save
+  localStorage.removeItem('sat-srs-session');
+  appStats.srsSessions = (appStats.srsSessions || 0) + 1;
+  saveStats();
   stopWordTimer();
   document.getElementById('focus-card-wrap').style.display = 'none';
   document.getElementById('focus-results').style.display = 'block';
@@ -3561,13 +3564,13 @@ function showSRSResults() {
   const pct = Math.round((easyCount / total) * 100);
   document.getElementById('foc-mastered-pct').textContent = pct + '% Known';
   document.getElementById('foc-results-sub').textContent = `${total} word${total !== 1 ? 's' : ''} reviewed · ${timeStr}`;
-  const hardWords = [], midWords = [], easyWords = [];
+  const midWords = [], easyWords = [];
   const displaySeen = new Set();
   _srsQueue.forEach(wi => {
     if (displaySeen.has(wi)) return; displaySeen.add(wi);
     const w = words[wi]; if (!w) return;
     const r = _srsResults[wi];
-    if (!r || r.rating === 'hard') hardWords.push(w.word);
+    if (!r || r.rating === 'hard') return; // hard = looped back, not shown
     else if (r.rating === 'mid') midWords.push(`${w.word} (+${r.interval}d)`);
     else easyWords.push(`${w.word} (+${r.interval}d)`);
   });
@@ -3576,7 +3579,6 @@ function showSRSResults() {
   [
     { title: '✓ Know it', arr: easyWords, cls: 'right' },
     { title: '~ Kinda',   arr: midWords,  cls: '', titleColor: '#f0a060' },
-    { title: '✗ Struggled', arr: hardWords, cls: 'wrong' },
   ].forEach(({ title, arr, cls, titleColor }) => {
     const el = document.createElement('div');
     el.className = 'result-group ' + cls;
