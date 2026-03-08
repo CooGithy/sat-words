@@ -3217,19 +3217,17 @@ function getNextDueDate() {
 }
 
 function srsSchedule(wordStr, rating) {
-  // hard = always +1 day (reset)
-  // mid  = starts at +2 days, ×1.5 each subsequent mid
-  // easy = starts at +4 days, ×2.5 each subsequent easy
+  // mid  = tomorrow (+1d first time, then ×1.5 each subsequent mid)
+  // easy = spaced out (+4d first time, then ×2.5 each subsequent easy)
+  // hard = does NOT schedule — card gets re-queued in session instead (handled in rateFocus)
   const srs = getGroupSRS();
   const today = todayStr();
   let rec = srs[wordStr] || { interval: 1, due: today, lastReviewed: null, reviews: 0 };
   if (!rec.reviews) rec.reviews = 0;
   if (!rec.interval) rec.interval = 1;
 
-  if (rating === 'hard') {
-    rec.interval = 1;
-  } else if (rating === 'mid') {
-    rec.interval = rec.reviews === 0 ? 2 : Math.max(2, Math.round(rec.interval * 1.5));
+  if (rating === 'mid') {
+    rec.interval = rec.reviews === 0 ? 1 : Math.max(1, Math.round(rec.interval * 1.5));
   } else {
     // easy
     rec.interval = rec.reviews === 0 ? 4 : Math.max(4, Math.round(rec.interval * 2.5));
@@ -3458,10 +3456,9 @@ function updateRatingHints(wordStr) {
   const reviews = rec ? (rec.reviews || 0) : 0;
   const interval = rec ? (rec.interval || 1) : 1;
   const fmt = d => d === 1 ? '+1 day' : `+${d} days`;
-  const hardDays = 1;
-  const midDays  = reviews === 0 ? 2 : Math.max(2, Math.round(interval * 1.5));
+  const midDays  = reviews === 0 ? 1 : Math.max(1, Math.round(interval * 1.5));
   const easyDays = reviews === 0 ? 4 : Math.max(4, Math.round(interval * 2.5));
-  document.querySelectorAll('.rating-hard .rating-hint').forEach(el => el.textContent = fmt(hardDays));
+  document.querySelectorAll('.rating-hard .rating-hint').forEach(el => el.textContent = 'again soon');
   document.querySelectorAll('.rating-mid .rating-hint').forEach(el => el.textContent = fmt(midDays));
   document.querySelectorAll('.rating-easy .rating-hint').forEach(el => el.textContent = fmt(easyDays));
 }
@@ -3483,10 +3480,19 @@ function rateFocus(rating) {
     showSRSCard();
     return;
   }
-  // Schedule and record
-  const newInterval = srsSchedule(w.word, rating);
-  _srsResults[wi] = { rating, interval: newInterval };
   recordAnalytic(w.word, rating === 'easy' ? 'focusEasy' : rating === 'mid' ? 'focusMid' : 'focusHard');
+
+  if (rating === 'hard') {
+    // Re-queue this card ~3 positions ahead so it shows up again this session
+    const reinsertAt = Math.min(_srsSessionIdx + 3, _srsQueue.length);
+    _srsQueue.splice(reinsertAt, 0, wi);
+    // Don't schedule yet — will schedule when they eventually get mid or easy on it
+    _srsResults[wi] = { rating: 'hard', interval: null };
+  } else {
+    const newInterval = srsSchedule(w.word, rating);
+    _srsResults[wi] = { rating, interval: newInterval };
+  }
+
   _srsSessionIdx++;
   showSRSCard();
 }
@@ -3500,7 +3506,7 @@ function showSRSResults() {
   const mins = Math.floor(elapsed / 60), secs = elapsed % 60;
   const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
   const total = _srsQueue.length;
-  const easyCount = Object.values(_srsResults).filter(r => r.rating === 'easy').length;
+  const easyCount = Object.values(_srsResults).filter(r => r.rating === 'easy' || r.rating === 'mid').length;
   const pct = Math.round((easyCount / total) * 100);
   document.getElementById('foc-mastered-pct').textContent = pct + '% Known';
   document.getElementById('foc-results-sub').textContent = `${total} word${total !== 1 ? 's' : ''} reviewed · ${timeStr}`;
