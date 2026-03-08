@@ -3251,10 +3251,11 @@ function getIntervalHint(wordStr) {
 }
 
 // Session state
-let _srsQueue = [];     // array of word indices for this session
-let _srsSessionIdx = 0; // current position in queue
-let _srsResults = {};   // wordIdx -> 'hard'|'mid'|'easy'
-let _srsRequeued = new Set(); // word indices already re-queued this session (hard once only)
+let _srsQueue = [];
+let _srsSessionIdx = 0;
+let _srsResults = {};
+let _srsRequeued = new Set();
+let _srsSessionGroupId = null; // group ID this session belongs to
 let _srsStartTime = null;
 let _srsSettings = { limit: 30 };
 
@@ -3417,13 +3418,12 @@ function startSRS() {
   _srsStartTime = Date.now();
   focusSet = [...due];
   ctxFocus = 'all';
-  // Mark new words as seen today
+  // Mark only NEW words as seen today (so they don't re-appear as new tomorrow)
   const srs = getGroupSRS();
   const newWordsInSession = due.map(i => words[i]?.word).filter(w => w && !srs[w]);
   if (newWordsInSession.length) markNewWordsSeen(newWordsInSession);
-  // Mark ALL session words as reviewed today so daily limit is a hard daily cap
-  const allSessionWords = due.map(i => words[i]?.word).filter(Boolean);
-  if (allSessionWords.length) markWordsReviewedToday(allSessionWords);
+  // Store which group this session belongs to
+  _srsSessionGroupId = activeGroupId;
   document.getElementById('focus-setup').style.display = 'none';
   document.getElementById('focus-results').style.display = 'none';
   document.getElementById('focus-card-wrap').style.display = 'flex';
@@ -3485,18 +3485,36 @@ function rateFocus(rating) {
   }
   recordAnalytic(w.word, rating === 'easy' ? 'focusEasy' : rating === 'mid' ? 'focusMid' : 'focusHard');
 
+  // Mark this word reviewed today under the session's group (not current activeGroupId)
+  if (_srsSessionGroupId) {
+    const all = JSON.parse(localStorage.getItem('sat-srs-daily') || '{}');
+    const today = todayStr();
+    const rec = all[_srsSessionGroupId] || { date: today, newSeen: [], reviewedToday: [] };
+    if (rec.date !== today) { rec.date = today; rec.newSeen = []; rec.reviewedToday = []; }
+    if (!rec.reviewedToday) rec.reviewedToday = [];
+    if (!rec.reviewedToday.includes(w.word)) rec.reviewedToday.push(w.word);
+    all[_srsSessionGroupId] = rec;
+    localStorage.setItem('sat-srs-daily', JSON.stringify(all));
+  }
+
   if (rating === 'hard') {
-    // Schedule for tomorrow immediately — no re-queuing, no infinite loops
-    _srsResults[wi] = { rating: 'hard', interval: 1 };
-    const srs = getGroupSRS();
-    let rec = srs[w.word] || { interval: 1, due: todayStr(), lastReviewed: null, reviews: 0 };
-    if (!rec.reviews) rec.reviews = 0;
-    rec.interval = 1;
-    rec.reviews += 1;
-    rec.lastReviewed = todayStr();
-    rec.due = addDays(todayStr(), 1);
-    srs[w.word] = rec;
-    saveGroupSRS(srs);
+    // Re-queue once so it comes back in a few cards
+    if (!_srsRequeued.has(wi)) {
+      _srsRequeued.add(wi);
+      const reinsertAt = Math.min(_srsSessionIdx + 1 + Math.floor(Math.random() * 4), _srsQueue.length);
+      _srsQueue.splice(reinsertAt, 0, wi);
+    } else {
+      // Already re-queued and still hard — schedule for tomorrow
+      _srsResults[wi] = { rating: 'hard', interval: 1 };
+      const srs = getGroupSRS();
+      let rec2 = srs[w.word] || { interval: 1, due: todayStr(), lastReviewed: null, reviews: 0 };
+      if (!rec2.reviews) rec2.reviews = 0;
+      rec2.interval = 1; rec2.reviews += 1;
+      rec2.lastReviewed = todayStr();
+      rec2.due = addDays(todayStr(), 1);
+      srs[w.word] = rec2; saveGroupSRS(srs);
+    }
+    if (!_srsResults[wi]) _srsResults[wi] = { rating: 'hard', interval: null };
   } else {
     // mid or easy — schedule with normal growth
     const newInterval = srsSchedule(w.word, rating);
@@ -3520,10 +3538,28 @@ function showSRSResults() {
   const pct = Math.round((easyCount / total) * 100);
   document.getElementById('foc-mastered-pct').textContent = pct + '% Known';
   document.getElementById('foc-results-sub').textContent = `${total} word${total !== 1 ? 's' : ''} reviewed · ${timeStr}`;
-  const hardWords = [], midWords = [], easyWords = [];
+  // Schedule any hard words that were only seen once (re-queued but still hard)
+  const srsFinal = getGroupSRS();
   const resultsSeen = new Set();
   _srsQueue.forEach(wi => {
     if (resultsSeen.has(wi)) return; resultsSeen.add(wi);
+    const r = _srsResults[wi];
+    const w = words[wi]; if (!w) return;
+    if (!r || (r.rating === 'hard' && !r.interval)) {
+      let rec = srsFinal[w.word] || { interval: 1, due: todayStr(), lastReviewed: null, reviews: 0 };
+      if (!rec.reviews) rec.reviews = 0;
+      rec.interval = 1; rec.reviews += 1;
+      rec.lastReviewed = todayStr();
+      rec.due = addDays(todayStr(), 1);
+      srsFinal[w.word] = rec;
+    }
+  });
+  saveGroupSRS(srsFinal);
+
+  const hardWords = [], midWords = [], easyWords = [];
+  const displaySeen = new Set();
+  _srsQueue.forEach(wi => {
+    if (displaySeen.has(wi)) return; displaySeen.add(wi);
     const w = words[wi]; if (!w) return;
     const r = _srsResults[wi];
     if (!r || r.rating === 'hard') hardWords.push(w.word);
