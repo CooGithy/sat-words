@@ -790,6 +790,7 @@
         <div id="srs-caught-up" style="display:none;">
           <div class="srs-caught-msg">All caught up!</div>
           <div class="srs-next-msg" id="srs-next-msg"></div>
+          <button class="btn" id="srs-practice-btn" onclick="startPracticeSession()" style="display:none;margin-top:14px;font-size:0.78rem;">↺ Practice today's words again</button>
         </div>
         <div class="srs-meta" id="srs-meta"></div>
         <button class="srs-settings-toggle" onclick="toggleSRSSettings()">⚙ Settings</button>
@@ -3161,21 +3162,32 @@ function getSRSDueWords() {
   const today = todayStr();
   const srs = getGroupSRS();
   const limit = _srsSettings.limit || Infinity;
-  // Always exclude words already reviewed today — hard daily cap regardless of limit
   const dailyRec = getDailyRecord();
   const alreadyDone = new Set(dailyRec.reviewedToday || []);
   const reviewDue = [];
   const newDue = [];
   words.forEach((w, i) => {
-    if (alreadyDone.has(w.word)) return; // already done today, never show again today
     const rec = srs[w.word];
-    if (!rec) newDue.push(i);          // new word, not yet reviewed today
-    else if (rec.due <= today) reviewDue.push(i); // overdue or due today
+    if (!rec) {
+      // New word — never reviewed before. Always eligible unless already seen today.
+      if (!alreadyDone.has(w.word)) newDue.push(i);
+    } else if (rec.due <= today && !alreadyDone.has(w.word)) {
+      // Scheduled review due today and not yet done today
+      reviewDue.push(i);
+    }
   });
   const combined = [...reviewDue, ...newDue];
   if (limit === Infinity) return combined;
+  // Limit counts against total done today
   const stillOwed = Math.max(0, limit - alreadyDone.size);
   return combined.slice(0, stillOwed);
+}
+
+// Words reviewed today — for practice-only re-run (no rescheduling)
+function getTodaysReviewedWords() {
+  const dailyRec = getDailyRecord();
+  const reviewed = dailyRec.reviewedToday || [];
+  return reviewed.map(w => words.findIndex(wd => wd.word === w)).filter(i => i !== -1);
 }
 
 function getNextDueDate() {
@@ -3365,7 +3377,36 @@ function buildSRSSetup() {
     } else {
       nextEl.textContent = words.length === 0 ? 'Add some words to get started.' : '';
     }
+    // Show practice button only if there are words reviewed today to re-practice
+    const practiceBtn = document.getElementById('srs-practice-btn');
+    const todayDone = (getDailyRecord().reviewedToday || []).length;
+    if (practiceBtn) practiceBtn.style.display = todayDone > 0 ? 'inline-block' : 'none';
   }
+}
+
+let _srsPracticeMode = false; // true = practice run, don't reschedule
+
+function startPracticeSession() {
+  const practiceWords = getTodaysReviewedWords();
+  if (practiceWords.length === 0) { showToast('No words reviewed today yet.'); return; }
+  // Shuffle
+  const q = [...practiceWords];
+  for (let i = q.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [q[i], q[j]] = [q[j], q[i]];
+  }
+  _srsPracticeMode = true;
+  _srsQueue = q;
+  _srsSessionIdx = 0;
+  _srsResults = {};
+  _srsStartTime = Date.now();
+  focusSet = [...q];
+  ctxFocus = 'all';
+  document.getElementById('focus-setup').style.display = 'none';
+  document.getElementById('focus-results').style.display = 'none';
+  document.getElementById('focus-card-wrap').style.display = 'flex';
+  showSRSCard();
+  openFullscreenSRS();
 }
 
 function startSRS() {
@@ -3425,6 +3466,14 @@ function rateFocus(rating) {
   if (wi === undefined) return;
   const w = words[wi];
   if (!w) { _srsSessionIdx++; showSRSCard(); return; }
+  if (_srsPracticeMode) {
+    // Practice mode — record for summary only, don't reschedule
+    _srsResults[wi] = { rating, interval: null };
+    recordAnalytic(w.word, rating === 'easy' ? 'focusEasy' : rating === 'mid' ? 'focusMid' : 'focusHard');
+    _srsSessionIdx++;
+    showSRSCard();
+    return;
+  }
   // Schedule and record
   const newInterval = srsSchedule(w.word, rating);
   _srsResults[wi] = { rating, interval: newInterval };
@@ -3475,6 +3524,7 @@ function showSRSResults() {
 
 function resetFocusSetup() {
   if (_srsfsOpen) closeFullscreenSRS();
+  _srsPracticeMode = false;
   focusFromQuiz = false;
   stopWordTimer();
   document.getElementById('focus-setup').style.display = 'block';
@@ -3991,6 +4041,8 @@ function qfsNext() {
 let _srsfsOpen = false;
 
 function openFullscreenSRS() {
+  const badge = document.getElementById('srsfs-practice-badge');
+  if (badge) badge.style.display = _srsPracticeMode ? 'inline-block' : 'none';
   _srsfsOpen = true;
   document.getElementById('srs-fullscreen-overlay').classList.add('open');
   srsfsSync();
@@ -4651,6 +4703,7 @@ document.addEventListener('keydown', e => {
   <div class="srs-fullscreen-top">
     <span class="fc-fullscreen-counter" id="srsfs-counter"></span>
     <div style="display:flex;gap:10px;align-items:center;">
+      <span id="srsfs-practice-badge" style="display:none;font-family:var(--font-mono);font-size:0.65rem;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:2px 8px;letter-spacing:0.05em;">PRACTICE</span>
       <button class="srs-bm-star" id="srsfs-bm-btn" onclick="srsfsToggleBookmark()" title="Bookmark">☆</button>
       <button class="fc-fullscreen-exit" onclick="closeFullscreenSRS()">✕ Exit Focus</button>
     </div>
