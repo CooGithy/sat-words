@@ -3217,27 +3217,37 @@ function getNextDueDate() {
 }
 
 function srsSchedule(wordStr, rating) {
-  // SM-2 simplified scheduling
   const srs = getGroupSRS();
   const today = todayStr();
-  let rec = srs[wordStr] || { interval: 1, ease: 2.5, due: today, lastReviewed: null };
+  const isNew = !srs[wordStr]; // true if this is the very first review
+  let rec = srs[wordStr] || { interval: 1, ease: 2.5, due: today, lastReviewed: null, reviews: 0 };
+  if (!rec.reviews) rec.reviews = 0;
 
-  if (rating === 'hard') {
+  if (isNew || rec.reviews === 0) {
+    // First review ever — always tomorrow regardless of rating
+    // Hard: stays at 1. Mid/Easy: also 1, but ease adjusts for future growth
     rec.interval = 1;
-    rec.ease = Math.max(1.3, rec.ease - 0.2);
-  } else if (rating === 'mid') {
-    rec.interval = Math.max(1, Math.round(rec.interval * 1.2));
-    rec.ease = Math.max(1.3, rec.ease - 0.15);
-  } else { // easy
-    rec.interval = Math.max(1, Math.round(rec.interval * rec.ease));
-    rec.ease = Math.min(3.0, rec.ease + 0.1);
+    if (rating === 'hard') rec.ease = Math.max(1.3, rec.ease - 0.2);
+    else if (rating === 'mid') rec.ease = Math.max(1.3, rec.ease - 0.05);
+    // easy: ease unchanged on first pass, grows from second review onward
+  } else {
+    // Subsequent reviews — interval grows based on rating
+    if (rating === 'hard') {
+      rec.interval = 1;
+      rec.ease = Math.max(1.3, rec.ease - 0.2);
+    } else if (rating === 'mid') {
+      rec.interval = Math.max(2, Math.round(rec.interval * 1.2));
+      rec.ease = Math.max(1.3, rec.ease - 0.15);
+    } else { // easy
+      rec.interval = Math.max(2, Math.round(rec.interval * rec.ease));
+      rec.ease = Math.min(3.0, rec.ease + 0.1);
+    }
   }
 
+  rec.reviews = (rec.reviews || 0) + 1;
   rec.lastReviewed = today;
-  // Minimum due date is always tomorrow — words reviewed today never reappear today
-  const minDue = addDays(today, 1);
-  const calcDue = addDays(today, rec.interval);
-  rec.due = calcDue < minDue ? minDue : calcDue;
+  // Always due tomorrow minimum
+  rec.due = addDays(today, rec.interval);
   srs[wordStr] = rec;
   saveGroupSRS(srs);
   return rec.interval;
