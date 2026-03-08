@@ -2756,6 +2756,8 @@ function confirmResetAnalytics() {
   // Clear SRS schedule + daily record for all groups
   localStorage.removeItem('sat-srs');
   localStorage.removeItem('sat-srs-daily');
+  localStorage.removeItem('sat-srs-session');
+  _srsPracticeMode = false;
   // Refresh UI
   renderWordList();
   if (activeMode === 'analytics') renderAnalytics();
@@ -3418,12 +3420,13 @@ function startSRS() {
   if (!due) {
     due = getSRSDueWords();
     if (due.length === 0) { buildSRSSetup(); return; }
-    // Shuffle only fresh sessions
-    for (let i = due.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [due[i], due[j]] = [due[j], due[i]];
-    }
   }
+  // Always shuffle for randomness
+  for (let i = due.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [due[i], due[j]] = [due[j], due[i]];
+  }
+  _srsPracticeMode = false;
   _srsQueue = due;
   _srsSessionIdx = 0;
   _srsResults = {};
