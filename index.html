@@ -3190,12 +3190,16 @@ function getSRSDueWords() {
   // Still have unseen words — always add 30 new ON TOP of due reviews
   // newSeen tracks new words already introduced today (persists across refreshes)
   const freshNewWords = newWords.filter(i => !newSeenToday.has(words[i]?.word));
+  // Shuffle before slicing so the 30 picked are random, not the first 30 alphabetically
+  for (let i = freshNewWords.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [freshNewWords[i], freshNewWords[j]] = [freshNewWords[j], freshNewWords[i]];
+  }
   const alreadyNewToday = newSeenToday.size;
-  const newBudget = Math.max(0, 30 - alreadyNewToday); // 30 new per day, not 30 total
+  const newBudget = Math.max(0, 30 - alreadyNewToday);
   const newToAdd = freshNewWords.slice(0, newBudget);
 
   const result = [...reviewDue, ...newToAdd];
-  // Shuffle at source so order is never alphabetical
   for (let i = result.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [result[i], result[j]] = [result[j], result[i]];
