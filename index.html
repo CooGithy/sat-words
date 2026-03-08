@@ -3161,21 +3161,21 @@ function getSRSDueWords() {
   const today = todayStr();
   const srs = getGroupSRS();
   const limit = _srsSettings.limit || Infinity;
+  // Always exclude words already reviewed today — hard daily cap regardless of limit
+  const dailyRec = getDailyRecord();
+  const alreadyDone = new Set(dailyRec.reviewedToday || []);
   const reviewDue = [];
   const newDue = [];
   words.forEach((w, i) => {
+    if (alreadyDone.has(w.word)) return; // already done today, never show again today
     const rec = srs[w.word];
-    if (!rec) newDue.push(i);
-    else if (rec.due <= today) reviewDue.push(i);
+    if (!rec) newDue.push(i);          // new word, not yet reviewed today
+    else if (rec.due <= today) reviewDue.push(i); // overdue or due today
   });
   const combined = [...reviewDue, ...newDue];
   if (limit === Infinity) return combined;
-  // With a limit: subtract words already reviewed today so the cap is per-day, not per-session
-  const dailyRec = getDailyRecord();
-  const alreadyDone = new Set(dailyRec.reviewedToday || []);
-  const remaining = combined.filter(i => !alreadyDone.has(words[i]?.word));
   const stillOwed = Math.max(0, limit - alreadyDone.size);
-  return remaining.slice(0, stillOwed);
+  return combined.slice(0, stillOwed);
 }
 
 function getNextDueDate() {
@@ -3211,7 +3211,10 @@ function srsSchedule(wordStr, rating) {
   }
 
   rec.lastReviewed = today;
-  rec.due = addDays(today, rec.interval);
+  // Minimum due date is always tomorrow — words reviewed today never reappear today
+  const minDue = addDays(today, 1);
+  const calcDue = addDays(today, rec.interval);
+  rec.due = calcDue < minDue ? minDue : calcDue;
   srs[wordStr] = rec;
   saveGroupSRS(srs);
   return rec.interval;
@@ -3291,8 +3294,12 @@ function importSRSData(event) {
 }
 
 function toggleSRSSettings() {
-  // Don't allow opening settings during an active session
-  if (_srsQueue.length > 0 && _srsSessionIdx < _srsQueue.length) return;
+  // Lock settings if any words were reviewed today
+  const _dr = getDailyRecord();
+  if ((_dr.reviewedToday || []).length > 0) {
+    showToast('Settings locked — you already reviewed today. Resets at midnight.');
+    return;
+  }
   const panel = document.getElementById('srs-settings-panel');
   panel.classList.toggle('open');
 }
@@ -3319,12 +3326,16 @@ function buildSRSSetup() {
   const startArea = document.getElementById('srs-start-area');
   const caughtUp = document.getElementById('srs-caught-up');
   const metaEl = document.getElementById('srs-meta');
-  // Lock/unlock settings toggle based on whether session is active
-  const sessionActive = _srsQueue.length > 0 && _srsSessionIdx < _srsQueue.length;
+  // Lock settings if any words reviewed today
+  const _dailyLock = (getDailyRecord().reviewedToday || []).length > 0;
   const toggleBtn = document.querySelector('.srs-settings-toggle');
   const limitInput = document.getElementById('srs-limit-input');
-  if (toggleBtn) { toggleBtn.style.opacity = sessionActive ? '0.35' : ''; toggleBtn.style.cursor = sessionActive ? 'not-allowed' : ''; toggleBtn.title = sessionActive ? 'Finish your session before changing settings' : ''; }
-  if (limitInput) { limitInput.disabled = sessionActive; }
+  if (toggleBtn) {
+    toggleBtn.style.opacity = _dailyLock ? '0.4' : '';
+    toggleBtn.style.cursor = _dailyLock ? 'not-allowed' : '';
+    toggleBtn.title = _dailyLock ? 'Settings locked until tomorrow — review already started today' : '';
+  }
+  if (limitInput) { limitInput.disabled = _dailyLock; }
 
   metaEl.textContent = '';
 
