@@ -3262,9 +3262,15 @@ function getIntervalHint(wordStr) {
   const srs = getGroupSRS();
   const rec = srs[wordStr];
   if (!rec || !rec.lastReviewed) return 'New word';
-  const days = daysBetween(rec.lastReviewed, rec.due);
-  if (days <= 1) return 'Last reviewed today · Due tomorrow';
-  return `Last reviewed ${rec.lastReviewed} · Due in ${days} day${days !== 1 ? 's' : ''}`;
+  const today = todayStr();
+  const due = rec.due || addDays(today, 1);
+  const days = daysBetween(today, due);
+  // Format due date nicely e.g. "Mar 10"
+  const dueDate = new Date(due + 'T00:00:00');
+  const formatted = dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (days <= 0) return `Last reviewed today · Due today`;
+  if (days === 1) return `Last reviewed today · Due ${formatted}`;
+  return `Last reviewed ${rec.lastReviewed} · Due ${formatted}`;
 }
 
 // Session state
@@ -3582,11 +3588,12 @@ function showSRSResults() {
   const elapsed = _srsStartTime ? Math.round((Date.now() - _srsStartTime) / 1000) : 0;
   const mins = Math.floor(elapsed / 60), secs = elapsed % 60;
   const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
-  const uniqueWords = new Set(_srsQueue).size;
-  const easyCount = Object.values(_srsResults).filter(r => r.rating === 'easy' || r.rating === 'mid').length;
-  const pct = Math.round((easyCount / Math.max(1, uniqueWords)) * 100);
+  const resolvedResults = Object.values(_srsResults).filter(r => r.rating === 'easy' || r.rating === 'mid');
+  const resolvedCount = resolvedResults.length;
+  const easyCount = resolvedResults.filter(r => r.rating === 'easy').length;
+  const pct = resolvedCount > 0 ? Math.round((easyCount / resolvedCount) * 100) : 0;
   document.getElementById('foc-mastered-pct').textContent = pct + '% Known';
-  document.getElementById('foc-results-sub').textContent = `${uniqueWords} word${uniqueWords !== 1 ? 's' : ''} reviewed · ${timeStr}`;
+  document.getElementById('foc-results-sub').textContent = `${resolvedCount} word${resolvedCount !== 1 ? 's' : ''} reviewed · ${timeStr}`;
   const midWords = [], easyWords = [];
   const displaySeen = new Set();
   _srsQueue.forEach(wi => {
