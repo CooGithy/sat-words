@@ -3389,9 +3389,7 @@ function buildSRSSetup() {
   metaEl.textContent = '';
   // Show first-time hint
   const hintEl = document.getElementById('srs-onboarding-hint');
-  const srsData = getGroupSRS();
-  const hasAnyHistory = Object.keys(srsData).length > 0;
-  if (hintEl) hintEl.style.display = hasAnyHistory ? 'none' : 'block';
+  if (hintEl) hintEl.style.display = (appStats.srsSessions || 0) === 0 ? 'block' : 'none';
 
   if (dueCount > 0) {
     countEl.textContent = dueCount;
