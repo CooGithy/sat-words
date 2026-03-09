@@ -541,7 +541,7 @@
     /* --- Focus --- */
     .focus-setup { padding: 18px 12px; border-radius: 14px; }
     .focus-label { font-size: 1.1rem; }
-    .rating-btn { padding: 9px 10px; font-size: 0.68rem; }
+    .rating-btn { padding: 14px 12px; font-size: 0.72rem; min-height: 52px; }
 
     /* --- Source row (bookmarks filter) --- */
     .source-row { gap: 5px; margin-bottom: 10px; }
@@ -793,6 +793,9 @@
           <button class="btn" id="srs-practice-btn" onclick="startPracticeSession()" style="display:none;margin-top:14px;font-size:0.78rem;">↺ Practice today's words again</button>
         </div>
         <div class="srs-meta" id="srs-meta"></div>
+        <div id="srs-onboarding-hint" style="display:none;margin-top:16px;font-size:0.72rem;color:var(--muted);font-family:var(--font-mono);line-height:1.6;background:var(--surface2);border-radius:10px;padding:10px 14px;text-align:left;">
+          💡 Rate each word: <b>✓ Know it</b> spaces it out, <b>~ Kinda</b> brings it back sooner, <b>✗ Don't know</b> repeats it in the same session. Words reset daily.
+        </div>
         <button class="srs-settings-toggle" onclick="toggleSRSSettings()">⚙ Settings</button>
         <div class="srs-settings-panel" id="srs-settings-panel">
           <div class="srs-setting-label" style="margin-bottom:8px;">Review data<span>Back up or restore your schedule across devices</span></div>
@@ -2578,6 +2581,10 @@ function switchGroup(id) {
   document.getElementById('focus-card-wrap').style.display = 'none';
   document.getElementById('focus-results').style.display = 'none';
   document.getElementById('focus-setup').style.display = 'block';
+  // Clear any in-progress SRS session state for the old group
+  _srsQueue = []; _srsSessionIdx = 0; _srsResults = {};
+  _srsRequeued = new Set(); _srsResolved = new Set();
+  _srsSessionGroupId = null; _srsStartTime = null;
   switchMode('flash');
   showCard();
   renderWordList();
@@ -2710,6 +2717,8 @@ function deleteGroup(id) {
   const g = groups.find(x => x.id === id); if (!g) return;
   _deleteTargetId = id;
   document.getElementById('delete-group-name').textContent = g.name;
+  const wc = document.getElementById('delete-group-wordcount');
+  if (wc) wc.textContent = g.words.length > 0 ? ` and its ${g.words.length} word${g.words.length !== 1 ? 's' : ''}` : '';
   document.getElementById('delete-group-modal').classList.add('open');
 }
 
@@ -3256,11 +3265,12 @@ function srsSchedule(wordStr, rating) {
   if (!rec.reviews) rec.reviews = 0;
   if (!rec.interval) rec.interval = 1;
 
+  const MAX_INTERVAL = 180;
   if (rating === 'mid') {
-    rec.interval = rec.reviews === 0 ? 1 : Math.max(1, Math.round(rec.interval * 1.5));
+    rec.interval = rec.reviews === 0 ? 1 : Math.min(MAX_INTERVAL, Math.max(1, Math.round(rec.interval * 1.5)));
   } else {
     // easy
-    rec.interval = rec.reviews === 0 ? 4 : Math.max(4, Math.round(rec.interval * 2.5));
+    rec.interval = rec.reviews === 0 ? 4 : Math.min(MAX_INTERVAL, Math.max(4, Math.round(rec.interval * 2.5)));
   }
 
   rec.reviews += 1;
@@ -3377,6 +3387,11 @@ function buildSRSSetup() {
 
 
   metaEl.textContent = '';
+  // Show first-time hint
+  const hintEl = document.getElementById('srs-onboarding-hint');
+  const srsData = getGroupSRS();
+  const hasAnyHistory = Object.keys(srsData).length > 0;
+  if (hintEl) hintEl.style.display = hasAnyHistory ? 'none' : 'block';
 
   if (dueCount > 0) {
     countEl.textContent = dueCount;
@@ -3409,8 +3424,11 @@ function buildSRSSetup() {
     }
     // Show practice button only if there are words reviewed today to re-practice
     const practiceBtn = document.getElementById('srs-practice-btn');
-    const todayDone = (getDailyRecord().reviewedToday || []).length;
-    if (practiceBtn) practiceBtn.style.display = todayDone > 0 ? 'inline-block' : 'none';
+    // Show practice if any words reviewed OR any session started today (covers hard-only sessions)
+    const dailyRec = getDailyRecord();
+    const todayDone = (dailyRec.reviewedToday || []).length;
+    const anySeen = (dailyRec.newSeen || []).length;
+    if (practiceBtn) practiceBtn.style.display = (todayDone > 0 || anySeen > 0) ? 'inline-block' : 'none';
   }
 }
 
@@ -3525,8 +3543,9 @@ function updateRatingHints(wordStr) {
   const reviews = rec ? (rec.reviews || 0) : 0;
   const interval = rec ? (rec.interval || 1) : 1;
   const fmt = d => d === 1 ? '+1 day' : `+${d} days`;
-  const midDays  = reviews === 0 ? 1 : Math.max(1, Math.round(interval * 1.5));
-  const easyDays = reviews === 0 ? 4 : Math.max(4, Math.round(interval * 2.5));
+  const MAX_INTERVAL = 180;
+  const midDays  = reviews === 0 ? 1 : Math.min(MAX_INTERVAL, Math.max(1, Math.round(interval * 1.5)));
+  const easyDays = reviews === 0 ? 4 : Math.min(MAX_INTERVAL, Math.max(4, Math.round(interval * 2.5)));
   document.querySelectorAll('.rating-hard .rating-hint').forEach(el => el.textContent = 'again soon');
   document.querySelectorAll('.rating-mid .rating-hint').forEach(el => el.textContent = fmt(midDays));
   document.querySelectorAll('.rating-easy .rating-hint').forEach(el => el.textContent = fmt(easyDays));
@@ -3605,8 +3624,14 @@ function showSRSResults() {
   const resolvedCount = resolvedResults.length;
   const easyCount = resolvedResults.filter(r => r.rating === 'easy').length;
   const pct = resolvedCount > 0 ? Math.round((easyCount / resolvedCount) * 100) : 0;
-  document.getElementById('foc-mastered-pct').textContent = pct + '% Known';
-  document.getElementById('foc-results-sub').textContent = `${resolvedCount} word${resolvedCount !== 1 ? 's' : ''} reviewed · ${timeStr}`;
+  const kindaCount = resolvedResults.filter(r => r.rating === 'mid').length;
+  let knownLabel = '';
+  if (easyCount > 0 && kindaCount > 0) knownLabel = `${easyCount} known · ${kindaCount} kinda`;
+  else if (easyCount > 0) knownLabel = `${easyCount} known`;
+  else if (kindaCount > 0) knownLabel = `${kindaCount} kinda`;
+  else knownLabel = 'Keep practicing!';
+  document.getElementById('foc-mastered-pct').textContent = resolvedCount > 0 ? pct + '% Known' : '0% Known';
+  document.getElementById('foc-results-sub').textContent = `${knownLabel} · ${resolvedCount} word${resolvedCount !== 1 ? 's' : ''} · ${timeStr}`;
   const midWords = [], easyWords = [];
   const displaySeen = new Set();
   _srsQueue.forEach(wi => {
@@ -4292,6 +4317,14 @@ function addWord() {
   document.getElementById('word-input').value = '';
   document.getElementById('def-input').value = '';
   showCard(); renderWordList();
+  // If on spaced review setup screen, refresh so new word shows up in today's queue
+  if (activeMode === 'focus') {
+    const cardWrap = document.getElementById('focus-card-wrap');
+    const resultsWrap = document.getElementById('focus-results');
+    if (cardWrap?.style.display === 'none' && resultsWrap?.style.display === 'none') {
+      buildSRSSetup();
+    }
+  }
 }
 
 document.getElementById('def-input').addEventListener('keydown', e => { if (e.key==='Enter') addWord(); });
@@ -4727,7 +4760,7 @@ document.addEventListener('keydown', e => {
 <div class="modal-overlay" id="delete-group-modal">
   <div class="modal" style="max-width:380px;">
     <div class="modal-title" style="margin-bottom:6px;color:#e05050;">Delete Group</div>
-    <div class="modal-msg" style="margin-bottom:24px;">Delete <strong id="delete-group-name" style="color:var(--text);"></strong>? All its words will be permanently removed.</div>
+    <div class="modal-msg" style="margin-bottom:24px;">Delete <strong id="delete-group-name" style="color:var(--text);"></strong><span id="delete-group-wordcount"></span>? This cannot be undone.</div>
     <div class="modal-btns">
       <button class="btn btn-danger" onclick="confirmDeleteGroup()" style="flex:1;">Delete</button>
       <button class="btn" onclick="closeDeleteModal()">Cancel</button>
