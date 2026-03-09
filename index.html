@@ -955,14 +955,27 @@ function stopWordTimer() {
   }
 }
 
+let _lastSeenDate = todayStr();
 document.addEventListener('visibilitychange', function() {
   if (document.hidden) {
     stopWordTimer();
   } else {
+    const nowDate = todayStr();
+    const dateChanged = nowDate !== _lastSeenDate;
+    _lastSeenDate = nowDate;
     if (activeMode === 'flash' && words.length > 0) {
       const wi = fcOrder[fcIdx % fcOrder.length];
       if (words[wi]) startWordTimer(words[wi].word);
     }
+    // Refresh SRS setup if date rolled over or returning to the tab
+    if (activeMode === 'focus') {
+      const cardWrap = document.getElementById('focus-card-wrap');
+      const resultsWrap = document.getElementById('focus-results');
+      const isIdle = cardWrap?.style.display === 'none' && resultsWrap?.style.display === 'none';
+      if (isIdle || dateChanged) { loadSRSSettings(); buildSRSSetup(); }
+    }
+    // Refresh analytics if date changed
+    if (dateChanged && activeMode === 'analytics') renderAnalytics();
   }
 });
 
